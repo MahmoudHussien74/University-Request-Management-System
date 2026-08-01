@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="URMS.Api/URMS.Api.csproj" />
+  <Project Path="URMS.Application/URMS.Application.csproj" />
+  <Project Path="URMS.Domain/URMS.Domain.csproj" />
+  <Project Path="URMS.Infrastructure/URMS.Infrastructure.csproj" />
+</Solution>

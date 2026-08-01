@@ -1,0 +1,12 @@
+## Ignore Visual Studio / .NET build outputs
+bin/
+obj/
+.vs/
+.idea/
+*.user
+*.userosscache
+*.sln.docstates
+appsettings.Development.json
+[Tt]emp/
+[L|l]og/
+[L|l]ogs/

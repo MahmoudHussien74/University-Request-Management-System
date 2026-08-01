@@ -1,0 +1,6 @@
+@URMS.Api_HostAddress = http://localhost:5264
+
+GET {{URMS.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
