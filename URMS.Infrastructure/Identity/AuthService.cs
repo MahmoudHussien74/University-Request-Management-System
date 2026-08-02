@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using URMS.Application.Contracts.Identity;
+using URMS.Application.Contracts.Persistence;
 using URMS.Application.DTOs.Auth;
 using URMS.Domain.Abstractions;
 using URMS.Domain.Constants;
 using URMS.Domain.Entities;
 using URMS.Domain.Enums;
-using URMS.Infrastructure.Persistence;
 
 namespace URMS.Infrastructure.Identity;
 
@@ -16,31 +16,30 @@ public class AuthService : IAuthService
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly IRolePermissionService _rolePermissionService;
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
-    private readonly AppDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
         IRolePermissionService rolePermissionService,
         IJwtTokenGenerator jwtTokenGenerator,
-        AppDbContext context)
+        IUnitOfWork unitOfWork)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _rolePermissionService = rolePermissionService;
         _jwtTokenGenerator = jwtTokenGenerator;
-        _context = context;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<Result<AuthResponseDto>> LoginAsync(LoginRequest request)
     {
-        var user = await _userManager.FindByEmailAsync(request.Email);
-        if (user is not null)
-        {
-            await _context.Entry(user).Reference(u => u.Student).LoadAsync();
-            await _context.Entry(user).Reference(u => u.Advisor).LoadAsync();
-            await _context.Entry(user).Reference(u => u.Staff).LoadAsync();
-        }
+        var userRepo = _unitOfWork.Repository<ApplicationUser>();
+
+        var user = await userRepo.FindOneAsync(
+            u => u.Email == request.Email,
+            q => q.Include(u => u.Student).Include(u => u.Advisor).Include(u => u.Staff)
+        );
 
         if (user is null)
             return Result.Failure<AuthResponseDto>(UserErrors.InvalidCredentials);
@@ -99,6 +98,18 @@ public class AuthService : IAuthService
         // Assign default Student role
         await _userManager.AddToRoleAsync(user, AppRoles.Student);
 
+        // ─── Auto-link to Academic Advisor from pre-registration lookup ───
+        var assignmentRepo = _unitOfWork.Repository<AdvisorStudentAssignment>();
+        var assignment = await assignmentRepo.FindOneAsync(
+            a => a.UniversityCode == request.UniversityCode
+        );
+
+        if (assignment is not null)
+        {
+            user.Student!.AcademicAdvisorId = assignment.AdvisorId;
+            await _unitOfWork.CompleteAsync();
+        }
+
         var roles = await _userManager.GetRolesAsync(user);
         var permissions = await _rolePermissionService.GetUserPermissionsAsync(user.Id);
 
@@ -139,11 +150,12 @@ public class AuthService : IAuthService
 
     public async Task<Result<UserResponse>> GetCurrentUserAsync(string userId)
     {
-        var user = await _context.Users
-            .Include(u => u.Student)
-            .Include(u => u.Advisor)
-            .Include(u => u.Staff)
-            .FirstOrDefaultAsync(u => u.Id == userId);
+        var userRepo = _unitOfWork.Repository<ApplicationUser>();
+
+        var user = await userRepo.FindOneAsync(
+            u => u.Id == userId,
+            q => q.Include(u => u.Student).Include(u => u.Advisor).Include(u => u.Staff)
+        );
 
         if (user is null)
             return Result.Failure<UserResponse>(UserErrors.UserNotFound);
@@ -167,12 +179,12 @@ public class AuthService : IAuthService
 
     public async Task<Result<AuthResponseDto>> RefreshTokenAsync(string token, string refreshToken)
     {
-        var user = await _context.Users
-            .Include(u => u.Student)
-            .Include(u => u.Advisor)
-            .Include(u => u.Staff)
-            .Include(u => u.RefreshTokens)
-            .FirstOrDefaultAsync(u => u.RefreshTokens.Any(t => t.Token == refreshToken));
+        var userRepo = _unitOfWork.Repository<ApplicationUser>();
+
+        var user = await userRepo.FindOneAsync(
+            u => u.RefreshTokens.Any(t => t.Token == refreshToken),
+            q => q.Include(u => u.Student).Include(u => u.Advisor).Include(u => u.Staff).Include(u => u.RefreshTokens)
+        );
 
         if (user is null)
             return Result.Failure<AuthResponseDto>(UserErrors.InvalidRefreshToken);
@@ -191,9 +203,12 @@ public class AuthService : IAuthService
 
     public async Task<Result> RevokeTokenAsync(string refreshToken)
     {
-        var user = await _context.Users
-            .Include(u => u.RefreshTokens)
-            .FirstOrDefaultAsync(u => u.RefreshTokens.Any(t => t.Token == refreshToken));
+        var userRepo = _unitOfWork.Repository<ApplicationUser>();
+
+        var user = await userRepo.FindOneAsync(
+            u => u.RefreshTokens.Any(t => t.Token == refreshToken),
+            q => q.Include(u => u.RefreshTokens)
+        );
 
         if (user is null)
             return Result.Failure(UserErrors.InvalidRefreshToken);
@@ -206,7 +221,7 @@ public class AuthService : IAuthService
         existingRefreshToken.IsRevoked = true;
         existingRefreshToken.RevokedOn = DateTime.UtcNow;
 
-        await _context.SaveChangesAsync();
+        await _unitOfWork.CompleteAsync();
         return Result.Success();
     }
 
@@ -219,7 +234,7 @@ public class AuthService : IAuthService
         var refreshToken = _jwtTokenGenerator.GenerateRefreshToken();
 
         user.RefreshTokens.Add(refreshToken);
-        await _context.SaveChangesAsync();
+        await _unitOfWork.CompleteAsync();
 
         return new AuthResponseDto(
             user.Id,

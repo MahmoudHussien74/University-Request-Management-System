@@ -1,29 +1,33 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using URMS.Application.Contracts.Persistence;
 using URMS.Application.Contracts.Requests;
 using URMS.Application.DTOs.Requests;
 using URMS.Domain.Abstractions;
+using URMS.Domain.Constants;
 using URMS.Domain.Entities;
 using URMS.Domain.Enums;
-using URMS.Domain.Constants;
-using URMS.Infrastructure.Persistence;
 
 namespace URMS.Infrastructure.Services;
 
 public class UniversityRequestService : IUniversityRequestService
 {
-    private readonly AppDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public UniversityRequestService(AppDbContext context)
+    public UniversityRequestService(IUnitOfWork unitOfWork)
     {
-        _context = context;
+        _unitOfWork = unitOfWork;
     }
 
     public async Task<Result<UniversityRequestResponseDto>> CreateRequestAsync(string studentId, CreateUniversityRequestDto dto)
     {
-        var student = await _context.Users
-            .Include(u => u.Student)
-            .FirstOrDefaultAsync(u => u.Id == studentId);
+        var userRepo = _unitOfWork.Repository<ApplicationUser>();
+        var requestRepo = _unitOfWork.Repository<UniversityRequest>();
+
+        var student = await userRepo.FindOneAsync(
+            u => u.Id == studentId,
+            q => q.Include(u => u.Student)
+        );
 
         if (student is null)
             return Result.Failure<UniversityRequestResponseDto>(RequestErrors.StudentNotFound);
@@ -63,52 +67,55 @@ public class UniversityRequestService : IUniversityRequestService
             Notes = dto.Notes
         });
 
-        _context.UniversityRequests.Add(request);
-        await _context.SaveChangesAsync();
+        await requestRepo.AddAsync(request);
+        await _unitOfWork.CompleteAsync();
 
         return Result.Success(MapToDto(request, student, null, null));
     }
 
     public async Task<Result<List<UniversityRequestResponseDto>>> GetMyRequestsAsync(string studentId)
     {
-        var requests = await _context.UniversityRequests
-            .Include(r => r.Student).ThenInclude(u => u.Student)
-            .Include(r => r.Advisor)
-            .Include(r => r.Staff)
-            .Include(r => r.HistoryLogs).ThenInclude(l => l.ActionBy)
-            .Where(r => r.StudentId == studentId)
-            .OrderByDescending(r => r.CreatedAt)
-            .ToListAsync();
+        var requestRepo = _unitOfWork.Repository<UniversityRequest>();
+
+        var requests = await requestRepo.FindAllAsync(
+            r => r.StudentId == studentId,
+            q => q.Include(r => r.Student).ThenInclude(u => u.Student)
+                  .Include(r => r.Advisor)
+                  .Include(r => r.Staff)
+                  .Include(r => r.HistoryLogs).ThenInclude(l => l.ActionBy),
+            orderBy: q => q.OrderByDescending(r => r.CreatedAt)
+        );
 
         return Result.Success(requests.Select(r => MapToDto(r, r.Student, r.Advisor, r.Staff)).ToList());
     }
 
     public async Task<Result<List<UniversityRequestResponseDto>>> GetAllRequestsAsync(RequestStatus? status = null)
     {
-        var query = _context.UniversityRequests
-            .Include(r => r.Student).ThenInclude(u => u.Student)
-            .Include(r => r.Advisor)
-            .Include(r => r.Staff)
-            .Include(r => r.HistoryLogs).ThenInclude(l => l.ActionBy)
-            .AsQueryable();
+        var requestRepo = _unitOfWork.Repository<UniversityRequest>();
 
-        if (status.HasValue)
-        {
-            query = query.Where(r => r.Status == status.Value);
-        }
+        var requests = await requestRepo.FindAllAsync(
+            r => !status.HasValue || r.Status == status.Value,
+            q => q.Include(r => r.Student).ThenInclude(u => u.Student)
+                  .Include(r => r.Advisor)
+                  .Include(r => r.Staff)
+                  .Include(r => r.HistoryLogs).ThenInclude(l => l.ActionBy),
+            orderBy: q => q.OrderByDescending(r => r.CreatedAt)
+        );
 
-        var requests = await query.OrderByDescending(r => r.CreatedAt).ToListAsync();
         return Result.Success(requests.Select(r => MapToDto(r, r.Student, r.Advisor, r.Staff)).ToList());
     }
 
     public async Task<Result<UniversityRequestResponseDto>> GetRequestByIdAsync(int requestId)
     {
-        var request = await _context.UniversityRequests
-            .Include(r => r.Student).ThenInclude(u => u.Student)
-            .Include(r => r.Advisor)
-            .Include(r => r.Staff)
-            .Include(r => r.HistoryLogs).ThenInclude(l => l.ActionBy)
-            .FirstOrDefaultAsync(r => r.Id == requestId);
+        var requestRepo = _unitOfWork.Repository<UniversityRequest>();
+
+        var request = await requestRepo.FindOneAsync(
+            r => r.Id == requestId,
+            q => q.Include(r => r.Student).ThenInclude(u => u.Student)
+                  .Include(r => r.Advisor)
+                  .Include(r => r.Staff)
+                  .Include(r => r.HistoryLogs).ThenInclude(l => l.ActionBy)
+        );
 
         if (request is null)
             return Result.Failure<UniversityRequestResponseDto>(RequestErrors.RequestNotFound);
@@ -118,10 +125,14 @@ public class UniversityRequestService : IUniversityRequestService
 
     public async Task<Result<UniversityRequestResponseDto>> ReviewByAdvisorAsync(int requestId, string advisorId, AdvisorReviewRequestDto dto)
     {
-        var request = await _context.UniversityRequests
-            .Include(r => r.Student).ThenInclude(u => u.Student)
-            .Include(r => r.HistoryLogs).ThenInclude(l => l.ActionBy)
-            .FirstOrDefaultAsync(r => r.Id == requestId);
+        var requestRepo = _unitOfWork.Repository<UniversityRequest>();
+        var userRepo = _unitOfWork.Repository<ApplicationUser>();
+
+        var request = await requestRepo.FindOneAsync(
+            r => r.Id == requestId,
+            q => q.Include(r => r.Student).ThenInclude(u => u.Student)
+                  .Include(r => r.HistoryLogs).ThenInclude(l => l.ActionBy)
+        );
 
         if (request is null)
             return Result.Failure<UniversityRequestResponseDto>(RequestErrors.RequestNotFound);
@@ -154,19 +165,23 @@ public class UniversityRequestService : IUniversityRequestService
             Notes = dto.RejectionReason
         });
 
-        await _context.SaveChangesAsync();
+        await _unitOfWork.CompleteAsync();
 
-        var advisor = await _context.Users.FindAsync(advisorId);
+        var advisor = await userRepo.GetByIdAsync(advisorId);
         return Result.Success(MapToDto(request, request.Student, advisor, null));
     }
 
     public async Task<Result<UniversityRequestResponseDto>> ConfirmByStaffAsync(int requestId, string staffId, StaffConfirmRequestDto dto)
     {
-        var request = await _context.UniversityRequests
-            .Include(r => r.Student).ThenInclude(u => u.Student)
-            .Include(r => r.Advisor)
-            .Include(r => r.HistoryLogs).ThenInclude(l => l.ActionBy)
-            .FirstOrDefaultAsync(r => r.Id == requestId);
+        var requestRepo = _unitOfWork.Repository<UniversityRequest>();
+        var userRepo = _unitOfWork.Repository<ApplicationUser>();
+
+        var request = await requestRepo.FindOneAsync(
+            r => r.Id == requestId,
+            q => q.Include(r => r.Student).ThenInclude(u => u.Student)
+                  .Include(r => r.Advisor)
+                  .Include(r => r.HistoryLogs).ThenInclude(l => l.ActionBy)
+        );
 
         if (request is null)
             return Result.Failure<UniversityRequestResponseDto>(RequestErrors.RequestNotFound);
@@ -199,20 +214,24 @@ public class UniversityRequestService : IUniversityRequestService
             Notes = dto.ConfirmationNotes
         });
 
-        await _context.SaveChangesAsync();
+        await _unitOfWork.CompleteAsync();
 
-        var staff = await _context.Users.FindAsync(staffId);
+        var staff = await userRepo.GetByIdAsync(staffId);
         return Result.Success(MapToDto(request, request.Student, request.Advisor, staff));
     }
 
     public async Task<Result<UniversityRequestResponseDto>> OverrideStatusByAdminAsync(int requestId, string adminId, AdminOverrideRequestDto dto)
     {
-        var request = await _context.UniversityRequests
-            .Include(r => r.Student).ThenInclude(u => u.Student)
-            .Include(r => r.Advisor)
-            .Include(r => r.Staff)
-            .Include(r => r.HistoryLogs).ThenInclude(l => l.ActionBy)
-            .FirstOrDefaultAsync(r => r.Id == requestId);
+        var requestRepo = _unitOfWork.Repository<UniversityRequest>();
+        var userRepo = _unitOfWork.Repository<ApplicationUser>();
+
+        var request = await requestRepo.FindOneAsync(
+            r => r.Id == requestId,
+            q => q.Include(r => r.Student).ThenInclude(u => u.Student)
+                  .Include(r => r.Advisor)
+                  .Include(r => r.Staff)
+                  .Include(r => r.HistoryLogs).ThenInclude(l => l.ActionBy)
+        );
 
         if (request is null)
             return Result.Failure<UniversityRequestResponseDto>(RequestErrors.RequestNotFound);
@@ -225,8 +244,7 @@ public class UniversityRequestService : IUniversityRequestService
             request.CompletedAt = DateTime.UtcNow;
             request.StaffId = adminId;
             request.StaffConfirmedAt = DateTime.UtcNow;
-            
-            // If it bypassed the advisor phase, implicitly set the advisor approval to now.
+
             if (request.AdvisorReviewedAt == null)
             {
                 request.AdvisorId = adminId;
@@ -260,9 +278,9 @@ public class UniversityRequestService : IUniversityRequestService
             Notes = dto.ReasonOrNotes
         });
 
-        await _context.SaveChangesAsync();
+        await _unitOfWork.CompleteAsync();
 
-        var adminUser = await _context.Users.FindAsync(adminId);
+        var adminUser = await userRepo.GetByIdAsync(adminId);
         return Result.Success(MapToDto(request, request.Student, request.Advisor ?? adminUser, request.Staff ?? adminUser));
     }
 

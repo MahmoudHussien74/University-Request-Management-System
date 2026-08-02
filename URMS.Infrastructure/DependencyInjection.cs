@@ -100,11 +100,16 @@ public static class DependencyInjection
             };
         });
 
-        // ─── 4. Custom Auth, JWT, Permission & Request Services ───
+        // ─── 4. Repositories & Unit of Work ───
+        services.AddScoped(typeof(URMS.Domain.Contracts.IGenericRepository<>), typeof(URMS.Infrastructure.Persistence.Repositories.GenericRepository<>));
+        services.AddScoped<URMS.Application.Contracts.Persistence.IUnitOfWork, URMS.Infrastructure.Persistence.Repositories.UnitOfWork>();
+
+        // ─── 5. Custom Auth, JWT, Permission & Request Services ───
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IRolePermissionService, RolePermissionService>();
         services.AddScoped<IUserManagementService, UserManagementService>();
+        services.AddScoped<IAdvisorAssignmentService, AdvisorAssignmentService>();
         services.AddScoped<URMS.Application.Contracts.Requests.IUniversityRequestService, URMS.Infrastructure.Services.UniversityRequestService>();
 
         // ─── 5. Dynamic Permission Policy Provider & Handler ───

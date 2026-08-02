@@ -1,37 +1,39 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using URMS.Application.Contracts.Identity;
+using URMS.Application.Contracts.Persistence;
 using URMS.Application.DTOs.Auth;
 using URMS.Domain.Abstractions;
 using URMS.Domain.Constants;
 using URMS.Domain.Entities;
-using URMS.Infrastructure.Persistence;
 
 namespace URMS.Infrastructure.Identity;
 
 public class UserManagementService : IUserManagementService
 {
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly AppDbContext _context;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IRolePermissionService _rolePermissionService;
 
     public UserManagementService(
         UserManager<ApplicationUser> userManager,
-        AppDbContext context,
+        IUnitOfWork unitOfWork,
         IRolePermissionService rolePermissionService)
     {
         _userManager = userManager;
-        _context = context;
+        _unitOfWork = unitOfWork;
         _rolePermissionService = rolePermissionService;
     }
 
     public async Task<Result<List<PendingStudentDto>>> GetPendingStudentsAsync()
     {
-        var pendingUsers = await _context.Users
-            .Include(u => u.Student)
-            .Where(u => !u.IsApproved && u.IsActive && u.Student != null)
-            .OrderByDescending(u => u.CreatedAt)
-            .ToListAsync();
+        var userRepo = _unitOfWork.Repository<ApplicationUser>();
+
+        var pendingUsers = await userRepo.FindAllAsync(
+            u => !u.IsApproved && u.IsActive && u.Student != null,
+            q => q.Include(u => u.Student),
+            orderBy: q => q.OrderByDescending(u => u.CreatedAt)
+        );
 
         var pendingStudents = pendingUsers.Select(u => new PendingStudentDto(
             u.Id,
@@ -50,10 +52,12 @@ public class UserManagementService : IUserManagementService
 
     public async Task<Result<UserResponse>> ApproveStudentAsync(string studentId)
     {
-        var user = await _context.Users
-            .Include(u => u.Student)
-            .Include(u => u.Advisor)
-            .FirstOrDefaultAsync(u => u.Id == studentId);
+        var userRepo = _unitOfWork.Repository<ApplicationUser>();
+
+        var user = await userRepo.FindOneAsync(
+            u => u.Id == studentId,
+            q => q.Include(u => u.Student).Include(u => u.Advisor)
+        );
 
         if (user is null)
             return Result.Failure<UserResponse>(UserErrors.UserNotFound);
