@@ -97,6 +97,21 @@ public class UniversityRequestService : IUniversityRequestService
         };
     }
 
+    public List<RequestStatusInfoDto> GetRequestStatuses()
+    {
+        return new List<RequestStatusInfoDto>
+        {
+            new(0, RequestStatus.Pending.ToString(), "معلق (في انتظار مراجعة المرشد)"),
+            new(1, RequestStatus.UnderAdvisorReview.ToString(), "قيد مراجعة المرشد الأكاديمي"),
+            new(2, RequestStatus.AdvisorApproved.ToString(), "مقبول من المرشد الأكاديمي"),
+            new(3, RequestStatus.SentToStaff.ToString(), "مرسل إلى شؤون الطلاب"),
+            new(4, RequestStatus.StaffConfirmed.ToString(), "مؤكد من شؤون الطلاب"),
+            new(5, RequestStatus.PendingPayment.ToString(), "في انتظار سداد الرسوم"),
+            new(6, RequestStatus.Completed.ToString(), "مكتمل / تم التنفيذ"),
+            new(7, RequestStatus.Rejected.ToString(), "مرفوض")
+        };
+    }
+
     public async Task<Result<List<UniversityRequestResponseDto>>> GetMyRequestsAsync(string studentId)
     {
         var requestRepo = _unitOfWork.Repository<UniversityRequest>();

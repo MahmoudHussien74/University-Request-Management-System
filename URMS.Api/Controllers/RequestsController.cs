@@ -35,6 +35,17 @@ public class RequestsController : ControllerBase
     }
 
     /// <summary>
+    /// Get all request statuses with IDs, enum names, and Arabic descriptions.
+    /// </summary>
+    [HttpGet("statuses")]
+    [AllowAnonymous]
+    public IActionResult GetRequestStatuses()
+    {
+        var statuses = _requestService.GetRequestStatuses();
+        return Ok(statuses);
+    }
+
+    /// <summary>
     /// Student submits a new university request (Full / Extra Hours).
     /// </summary>
     [HttpPost]

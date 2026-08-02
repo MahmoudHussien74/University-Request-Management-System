@@ -28,13 +28,11 @@ public static class DbInitializer
         // ─── 3. Seed Default Permissions per Role ───
         await SeedRolePermissionsAsync(roleManager);
 
-        // ─── 4. Seed Default SuperAdmin User ───
+        // ─── 4. Seed Default Users for Testing ───
         var superAdminEmail = "admin@urms.edu.eg";
-        var superAdminUser = await userManager.FindByEmailAsync(superAdminEmail);
-
-        if (superAdminUser is null)
+        if (await userManager.FindByEmailAsync(superAdminEmail) is null)
         {
-            superAdminUser = new ApplicationUser
+            var adminUser = new ApplicationUser
             {
                 UserName = superAdminEmail,
                 Email = superAdminEmail,
@@ -47,13 +45,90 @@ public static class DbInitializer
                 IsActive = true,
                 EmailConfirmed = true
             };
+            var result = await userManager.CreateAsync(adminUser, "SuperAdmin@123456");
+            if (result.Succeeded) await userManager.AddToRoleAsync(adminUser, AppRoles.SuperAdmin);
+        }
 
-            var createResult = await userManager.CreateAsync(superAdminUser, "SuperAdmin@123456");
-            if (createResult.Succeeded)
+        var advisorEmail = "advisor@urms.edu.eg";
+        if (await userManager.FindByEmailAsync(advisorEmail) is null)
+        {
+            var advisorUser = new ApplicationUser
             {
-                await userManager.AddToRoleAsync(superAdminUser, AppRoles.SuperAdmin);
+                UserName = advisorEmail,
+                Email = advisorEmail,
+                FirstNameAr = "مرشد",
+                LastNameAr = "أكاديمي",
+                FirstNameEn = "Academic",
+                LastNameEn = "Advisor",
+                UserType = URMS.Domain.Enums.UserType.AcademicAdvisor,
+                IsApproved = true,
+                IsActive = true,
+                EmailConfirmed = true
+            };
+            var result = await userManager.CreateAsync(advisorUser, "Advisor@123");
+            if (result.Succeeded)
+            {
+                await userManager.AddToRoleAsync(advisorUser, AppRoles.AcademicAdvisor);
+                context.AcademicAdvisors.Add(new AcademicAdvisor { UserId = advisorUser.Id, AdvisorCode = "ADV-001" });
             }
         }
+
+        var staffEmail = "staff@urms.edu.eg";
+        if (await userManager.FindByEmailAsync(staffEmail) is null)
+        {
+            var staffUser = new ApplicationUser
+            {
+                UserName = staffEmail,
+                Email = staffEmail,
+                FirstNameAr = "شؤون",
+                LastNameAr = "الطلاب",
+                FirstNameEn = "College",
+                LastNameEn = "Secretary",
+                UserType = URMS.Domain.Enums.UserType.CollegeSecretary,
+                IsApproved = true,
+                IsActive = true,
+                EmailConfirmed = true
+            };
+            var result = await userManager.CreateAsync(staffUser, "Staff@123");
+            if (result.Succeeded)
+            {
+                await userManager.AddToRoleAsync(staffUser, AppRoles.CollegeSecretary);
+                context.Staff.Add(new Staff { UserId = staffUser.Id, EmployeeCode = "STF-001" });
+            }
+        }
+
+        var studentEmail = "student@urms.edu.eg";
+        if (await userManager.FindByEmailAsync(studentEmail) is null)
+        {
+            var studentUser = new ApplicationUser
+            {
+                UserName = studentEmail,
+                Email = studentEmail,
+                FirstNameAr = "طالب",
+                LastNameAr = "تجريبي",
+                FirstNameEn = "Test",
+                LastNameEn = "Student",
+                UserType = URMS.Domain.Enums.UserType.Student,
+                IsApproved = true,
+                IsActive = true,
+                EmailConfirmed = true
+            };
+            var result = await userManager.CreateAsync(studentUser, "Student@123");
+            if (result.Succeeded)
+            {
+                await userManager.AddToRoleAsync(studentUser, AppRoles.Student);
+                var advisor = await context.AcademicAdvisors.FirstOrDefaultAsync();
+                context.Students.Add(new Student 
+                { 
+                    UserId = studentUser.Id, 
+                    UniversityCode = "2023001", 
+                    NationalId = "12345678901234",
+                    AcademicAdvisorId = advisor?.UserId
+                });
+            }
+        }
+
+        await context.SaveChangesAsync();
     }
 
     private static async Task SeedRolePermissionsAsync(RoleManager<IdentityRole> roleManager)
