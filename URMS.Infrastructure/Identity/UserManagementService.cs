@@ -1,3 +1,4 @@
+using Mapster;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using URMS.Application.Contracts.Identity;
@@ -35,17 +36,7 @@ public class UserManagementService : IUserManagementService
             orderBy: q => q.OrderByDescending(u => u.CreatedAt)
         );
 
-        var pendingStudents = pendingUsers.Select(u => new PendingStudentDto(
-            u.Id,
-            u.FullNameAr,
-            u.FullNameEn,
-            u.Email!,
-            u.Student!.UniversityCode,
-            u.Student.NationalId,
-            u.PhoneNumber,
-            u.Student.Address,
-            u.CreatedAt
-        )).ToList();
+        var pendingStudents = pendingUsers.Adapt<List<PendingStudentDto>>();
 
         return Result.Success(pendingStudents);
     }

@@ -1,13 +1,15 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.OpenApi;
 using URMS.Api.Middleware;
+using URMS.Application;
 using URMS.Domain.Entities;
 using URMS.Infrastructure;
 using URMS.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ─── 1. Add Infrastructure Services (DbContext, Identity, Cookies, Permissions) ───
+// ─── 1. Add Infrastructure & Application Services (Mapster, FluentValidation, DbContext, Identity) ───
+builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
 // ─── 2. Add Session ───

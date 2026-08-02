@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Mapster;
 using Microsoft.EntityFrameworkCore;
 using URMS.Application.Contracts.Persistence;
 using URMS.Application.Contracts.Requests;
@@ -46,6 +47,14 @@ public class UniversityRequestService : IUniversityRequestService
             ? JsonSerializer.Serialize(dto.AdditionalData)
             : null;
 
+        // Auto-assign the student's academic advisor to the request
+        var advisorId = student.Student?.AcademicAdvisorId;
+        ApplicationUser? advisor = null;
+        if (!string.IsNullOrEmpty(advisorId))
+        {
+            advisor = await userRepo.GetByIdAsync(advisorId);
+        }
+
         var request = new UniversityRequest
         {
             StudentId = studentId,
@@ -55,6 +64,7 @@ public class UniversityRequestService : IUniversityRequestService
             RequestedHours = dto.RequestedHours,
             Notes = dto.Notes,
             AdditionalDataJson = jsonMetadata,
+            AdvisorId = advisorId,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -70,7 +80,7 @@ public class UniversityRequestService : IUniversityRequestService
         await requestRepo.AddAsync(request);
         await _unitOfWork.CompleteAsync();
 
-        return Result.Success(MapToDto(request, student, null, null));
+        return Result.Success(MapToDto(request, student, advisor, null));
     }
 
     public async Task<Result<List<UniversityRequestResponseDto>>> GetMyRequestsAsync(string studentId)
@@ -95,6 +105,23 @@ public class UniversityRequestService : IUniversityRequestService
 
         var requests = await requestRepo.FindAllAsync(
             r => !status.HasValue || r.Status == status.Value,
+            q => q.Include(r => r.Student).ThenInclude(u => u.Student)
+                  .Include(r => r.Advisor)
+                  .Include(r => r.Staff)
+                  .Include(r => r.HistoryLogs).ThenInclude(l => l.ActionBy),
+            orderBy: q => q.OrderByDescending(r => r.CreatedAt)
+        );
+
+        return Result.Success(requests.Select(r => MapToDto(r, r.Student, r.Advisor, r.Staff)).ToList());
+    }
+
+    public async Task<Result<List<UniversityRequestResponseDto>>> GetAdvisorRequestsAsync(string advisorId, RequestStatus? status = null)
+    {
+        var requestRepo = _unitOfWork.Repository<UniversityRequest>();
+
+        var requests = await requestRepo.FindAllAsync(
+            r => (r.AdvisorId == advisorId || (r.Student.Student != null && r.Student.Student.AcademicAdvisorId == advisorId))
+                 && (!status.HasValue || r.Status == status.Value),
             q => q.Include(r => r.Student).ThenInclude(u => u.Student)
                   .Include(r => r.Advisor)
                   .Include(r => r.Staff)
@@ -317,27 +344,17 @@ public class UniversityRequestService : IUniversityRequestService
                 )).ToList();
         }
 
-        return new UniversityRequestResponseDto(
-            request.Id,
-            request.StudentId,
-            student.FullNameAr,
-            student.FullNameEn,
-            student.Student?.UniversityCode,
-            request.Type.ToString(),
-            request.Status.ToString(),
-            request.GPA,
-            request.RequestedHours,
-            request.Notes,
-            additionalData,
-            request.AdvisorId,
-            advisor?.FullNameAr,
-            request.RejectionReason,
-            request.StaffId,
-            staff?.FullNameAr,
-            request.CreatedAt,
-            request.AdvisorReviewedAt,
-            request.CompletedAt,
-            historyLogsDto
-        );
+        var dto = request.Adapt<UniversityRequestResponseDto>();
+
+        return dto with
+        {
+            StudentNameAr = student.FullNameAr,
+            StudentNameEn = student.FullNameEn,
+            UniversityCode = student.Student?.UniversityCode,
+            AdvisorName = advisor?.FullNameAr,
+            StaffName = staff?.FullNameAr,
+            AdditionalData = additionalData,
+            HistoryLogs = historyLogsDto
+        };
     }
 }

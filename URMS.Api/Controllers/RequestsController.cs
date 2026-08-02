@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using URMS.Api.Extensions;
 using URMS.Application.Contracts.Requests;
 using URMS.Application.DTOs.Requests;
+using URMS.Domain.Abstractions;
 using URMS.Domain.Constants;
 using URMS.Domain.Enums;
 using URMS.Infrastructure.PermissionAuthorization;
@@ -63,7 +64,20 @@ public class RequestsController : ControllerBase
     [HasPermission(Permissions.Requests.View)]
     public async Task<IActionResult> GetAllRequests([FromQuery] RequestStatus? status)
     {
-        var result = await _requestService.GetAllRequestsAsync(status);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var isAdvisor = User.IsInRole(AppRoles.AcademicAdvisor);
+        var isStaffOrAdmin = User.IsInRole(AppRoles.SuperAdmin) || User.IsInRole(AppRoles.CollegeSecretary);
+
+        Result<List<UniversityRequestResponseDto>> result;
+
+        if (isAdvisor && !isStaffOrAdmin && !string.IsNullOrEmpty(userId))
+        {
+            result = await _requestService.GetAdvisorRequestsAsync(userId, status);
+        }
+        else
+        {
+            result = await _requestService.GetAllRequestsAsync(status);
+        }
 
         return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }
