@@ -69,14 +69,12 @@ using (var scope = app.Services.CreateScope())
 }
 
 // ─── 6. Configure HTTP Middleware Pipeline ───
-if (app.Environment.IsDevelopment())
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "URMS API v1");
-    });
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "URMS API v1");
+    c.RoutePrefix = "swagger";
+});
 
 app.UseHttpsRedirection();
 app.UseExceptionHandler();
