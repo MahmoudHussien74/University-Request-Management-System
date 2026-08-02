@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.OpenApi;
+using URMS.Api.Middleware;
 using URMS.Domain.Entities;
 using URMS.Infrastructure;
 using URMS.Infrastructure.Persistence;
@@ -31,6 +32,8 @@ builder.Services.AddCors(options =>
 });
 
 // ─── 4. Add Controllers & Swagger / OpenAPI ───
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -74,6 +77,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseExceptionHandler();
 app.UseCors("DefaultPolicy");
 
 app.UseSession();

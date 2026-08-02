@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using URMS.Application.Contracts.Identity;
 using URMS.Application.DTOs.Auth;
+using URMS.Domain.Abstractions;
 using URMS.Domain.Constants;
 using URMS.Domain.Entities;
 using URMS.Infrastructure.Persistence;
@@ -24,7 +25,7 @@ public class UserManagementService : IUserManagementService
         _rolePermissionService = rolePermissionService;
     }
 
-    public async Task<List<PendingStudentDto>> GetPendingStudentsAsync()
+    public async Task<Result<List<PendingStudentDto>>> GetPendingStudentsAsync()
     {
         var pendingUsers = await _context.Users
             .Include(u => u.Student)
@@ -44,10 +45,10 @@ public class UserManagementService : IUserManagementService
             u.CreatedAt
         )).ToList();
 
-        return pendingStudents;
+        return Result.Success(pendingStudents);
     }
 
-    public async Task<UserResponse> ApproveStudentAsync(string studentId)
+    public async Task<Result<UserResponse>> ApproveStudentAsync(string studentId)
     {
         var user = await _context.Users
             .Include(u => u.Student)
@@ -55,10 +56,10 @@ public class UserManagementService : IUserManagementService
             .FirstOrDefaultAsync(u => u.Id == studentId);
 
         if (user is null)
-            throw new Exception("Student not found.");
+            return Result.Failure<UserResponse>(UserErrors.UserNotFound);
 
         if (user.IsApproved)
-            throw new Exception("Student is already approved.");
+            return Result.Failure<UserResponse>(UserErrors.StudentAlreadyApproved);
 
         user.IsApproved = true;
         await _userManager.UpdateAsync(user);
@@ -66,7 +67,7 @@ public class UserManagementService : IUserManagementService
         var roles = await _userManager.GetRolesAsync(user);
         var permissions = await _rolePermissionService.GetUserPermissionsAsync(user.Id);
 
-        return new UserResponse(
+        return Result.Success(new UserResponse(
             user.Id,
             user.Email!,
             user.FullNameAr,
@@ -77,26 +78,30 @@ public class UserManagementService : IUserManagementService
             user.IsActive,
             roles,
             permissions
-        );
+        ));
     }
 
-    public async Task DeactivateAccountAsync(string userId)
+    public async Task<Result> DeactivateAccountAsync(string userId)
     {
         var user = await _userManager.FindByIdAsync(userId);
         if (user is null)
-            throw new Exception("User not found.");
+            return Result.Failure(UserErrors.UserNotFound);
 
         user.IsActive = false;
         await _userManager.UpdateAsync(user);
+
+        return Result.Success();
     }
 
-    public async Task ReactivateAccountAsync(string userId)
+    public async Task<Result> ReactivateAccountAsync(string userId)
     {
         var user = await _userManager.FindByIdAsync(userId);
         if (user is null)
-            throw new Exception("User not found.");
+            return Result.Failure(UserErrors.UserNotFound);
 
         user.IsActive = true;
         await _userManager.UpdateAsync(user);
+
+        return Result.Success();
     }
 }

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using URMS.Api.Extensions;
 using URMS.Application.Contracts.Identity;
 using URMS.Application.DTOs.Auth;
 
@@ -22,10 +23,11 @@ public class AuthController : ControllerBase
     /// </summary>
     [HttpPost("register")]
     [AllowAnonymous]
-    public async Task<ActionResult<UserResponse>> RegisterStudent([FromBody] RegisterStudentRequest request)
+    public async Task<IActionResult> RegisterStudent([FromBody] RegisterStudentRequest request)
     {
-        var response = await _authService.RegisterStudentAsync(request);
-        return Ok(response);
+        var result = await _authService.RegisterStudentAsync(request);
+
+        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }
 
     /// <summary>
@@ -33,11 +35,15 @@ public class AuthController : ControllerBase
     /// </summary>
     [HttpPost("login")]
     [AllowAnonymous]
-    public async Task<ActionResult<AuthResponseDto>> Login([FromBody] LoginRequest request)
+    public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
-        var response = await _authService.LoginAsync(request);
-        SetAuthCookies(response.Token, response.RefreshToken, response.RefreshTokenExpiresOn);
-        return Ok(response);
+        var result = await _authService.LoginAsync(request);
+
+        if (result.IsFailure)
+            return result.ToProblem();
+
+        SetAuthCookies(result.Value.Token, result.Value.RefreshToken, result.Value.RefreshTokenExpiresOn);
+        return Ok(result.Value);
     }
 
     /// <summary>
@@ -45,7 +51,7 @@ public class AuthController : ControllerBase
     /// </summary>
     [HttpPost("refresh-token")]
     [AllowAnonymous]
-    public async Task<ActionResult<AuthResponseDto>> RefreshToken([FromBody] RefreshTokenRequest? request)
+    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest? request)
     {
         var token = request?.Token ?? Request.Cookies["accessToken"];
         var refreshToken = request?.RefreshToken ?? Request.Cookies["refreshToken"];
@@ -53,9 +59,13 @@ public class AuthController : ControllerBase
         if (string.IsNullOrEmpty(refreshToken))
             return BadRequest("Refresh token is required.");
 
-        var response = await _authService.RefreshTokenAsync(token ?? string.Empty, refreshToken);
-        SetAuthCookies(response.Token, response.RefreshToken, response.RefreshTokenExpiresOn);
-        return Ok(response);
+        var result = await _authService.RefreshTokenAsync(token ?? string.Empty, refreshToken);
+
+        if (result.IsFailure)
+            return result.ToProblem();
+
+        SetAuthCookies(result.Value.Token, result.Value.RefreshToken, result.Value.RefreshTokenExpiresOn);
+        return Ok(result.Value);
     }
 
     /// <summary>
@@ -70,8 +80,9 @@ public class AuthController : ControllerBase
             return BadRequest("Refresh token is required.");
 
         var result = await _authService.RevokeTokenAsync(refreshToken);
-        if (!result)
-            return BadRequest("Invalid or already revoked token.");
+
+        if (result.IsFailure)
+            return result.ToProblem();
 
         Response.Cookies.Delete("accessToken");
         Response.Cookies.Delete("refreshToken");
@@ -111,8 +122,11 @@ public class AuthController : ControllerBase
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        await _authService.ChangePasswordAsync(userId, request);
-        return Ok(new { message = "Password changed successfully." });
+        var result = await _authService.ChangePasswordAsync(userId, request);
+
+        return result.IsSuccess
+            ? Ok(new { message = "Password changed successfully." })
+            : result.ToProblem();
     }
 
     /// <summary>
@@ -120,17 +134,15 @@ public class AuthController : ControllerBase
     /// </summary>
     [HttpGet("me")]
     [Authorize]
-    public async Task<ActionResult<UserResponse>> GetCurrentUser()
+    public async Task<IActionResult> GetCurrentUser()
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId))
             return Unauthorized();
 
-        var user = await _authService.GetCurrentUserAsync(userId);
-        if (user is null)
-            return NotFound();
+        var result = await _authService.GetCurrentUserAsync(userId);
 
-        return Ok(user);
+        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }
 
     private void SetAuthCookies(string accessToken, string refreshToken, DateTime refreshTokenExpiresOn)

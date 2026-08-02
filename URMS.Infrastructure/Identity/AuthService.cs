@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using URMS.Application.Contracts.Identity;
 using URMS.Application.DTOs.Auth;
+using URMS.Domain.Abstractions;
 using URMS.Domain.Constants;
 using URMS.Domain.Entities;
 using URMS.Domain.Enums;
@@ -31,7 +32,7 @@ public class AuthService : IAuthService
         _context = context;
     }
 
-    public async Task<AuthResponseDto> LoginAsync(LoginRequest request)
+    public async Task<Result<AuthResponseDto>> LoginAsync(LoginRequest request)
     {
         var user = await _userManager.FindByEmailAsync(request.Email);
         if (user is not null)
@@ -42,26 +43,26 @@ public class AuthService : IAuthService
         }
 
         if (user is null)
-            throw new Exception("Invalid email or password.");
+            return Result.Failure<AuthResponseDto>(UserErrors.InvalidCredentials);
 
         if (!user.IsActive)
-            throw new Exception("Account is deactivated.");
+            return Result.Failure<AuthResponseDto>(UserErrors.AccountDeactivated);
 
         if (!user.IsApproved)
-            throw new Exception("Your account is pending approval by your Academic Advisor.");
+            return Result.Failure<AuthResponseDto>(UserErrors.AccountNotApproved);
 
         var isPasswordValid = await _userManager.CheckPasswordAsync(user, request.Password);
         if (!isPasswordValid)
-            throw new Exception("Invalid email or password.");
+            return Result.Failure<AuthResponseDto>(UserErrors.InvalidCredentials);
 
-        return await GenerateAuthResponseAsync(user);
+        return Result.Success(await GenerateAuthResponseAsync(user));
     }
 
-    public async Task<UserResponse> RegisterStudentAsync(RegisterStudentRequest request)
+    public async Task<Result<UserResponse>> RegisterStudentAsync(RegisterStudentRequest request)
     {
         var existingUser = await _userManager.FindByEmailAsync(request.Email);
         if (existingUser is not null)
-            throw new Exception("User with this email already exists.");
+            return Result.Failure<UserResponse>(UserErrors.DuplicateEmail);
 
         var user = new ApplicationUser
         {
@@ -92,7 +93,7 @@ public class AuthService : IAuthService
         if (!result.Succeeded)
         {
             var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-            throw new Exception($"Student registration failed: {errors}");
+            return Result.Failure<UserResponse>(UserErrors.RegistrationFailed(errors));
         }
 
         // Assign default Student role
@@ -101,7 +102,7 @@ public class AuthService : IAuthService
         var roles = await _userManager.GetRolesAsync(user);
         var permissions = await _rolePermissionService.GetUserPermissionsAsync(user.Id);
 
-        return new UserResponse(
+        return Result.Success(new UserResponse(
             user.Id,
             user.Email!,
             user.FullNameAr,
@@ -112,7 +113,7 @@ public class AuthService : IAuthService
             user.IsActive,
             roles,
             permissions
-        );
+        ));
     }
 
     public async Task LogoutAsync()
@@ -120,21 +121,23 @@ public class AuthService : IAuthService
         await _signInManager.SignOutAsync();
     }
 
-    public async Task ChangePasswordAsync(string userId, ChangePasswordRequest request)
+    public async Task<Result> ChangePasswordAsync(string userId, ChangePasswordRequest request)
     {
         var user = await _userManager.FindByIdAsync(userId);
         if (user is null)
-            throw new Exception("User not found.");
+            return Result.Failure(UserErrors.UserNotFound);
 
         var result = await _userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
         if (!result.Succeeded)
         {
             var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-            throw new Exception($"Change password failed: {errors}");
+            return Result.Failure(UserErrors.ChangePasswordFailed(errors));
         }
+
+        return Result.Success();
     }
 
-    public async Task<UserResponse?> GetCurrentUserAsync(string userId)
+    public async Task<Result<UserResponse>> GetCurrentUserAsync(string userId)
     {
         var user = await _context.Users
             .Include(u => u.Student)
@@ -142,12 +145,13 @@ public class AuthService : IAuthService
             .Include(u => u.Staff)
             .FirstOrDefaultAsync(u => u.Id == userId);
 
-        if (user is null) return null;
+        if (user is null)
+            return Result.Failure<UserResponse>(UserErrors.UserNotFound);
 
         var roles = await _userManager.GetRolesAsync(user);
         var permissions = await _rolePermissionService.GetUserPermissionsAsync(user.Id);
 
-        return new UserResponse(
+        return Result.Success(new UserResponse(
             user.Id,
             user.Email!,
             user.FullNameAr,
@@ -158,10 +162,10 @@ public class AuthService : IAuthService
             user.IsActive,
             roles,
             permissions
-        );
+        ));
     }
 
-    public async Task<AuthResponseDto> RefreshTokenAsync(string token, string refreshToken)
+    public async Task<Result<AuthResponseDto>> RefreshTokenAsync(string token, string refreshToken)
     {
         var user = await _context.Users
             .Include(u => u.Student)
@@ -171,37 +175,39 @@ public class AuthService : IAuthService
             .FirstOrDefaultAsync(u => u.RefreshTokens.Any(t => t.Token == refreshToken));
 
         if (user is null)
-            throw new Exception("Invalid refresh token.");
+            return Result.Failure<AuthResponseDto>(UserErrors.InvalidRefreshToken);
 
         var existingRefreshToken = user.RefreshTokens.Single(t => t.Token == refreshToken);
 
         if (!existingRefreshToken.IsActive)
-            throw new Exception("Refresh token is inactive or expired.");
+            return Result.Failure<AuthResponseDto>(UserErrors.RefreshTokenInactive);
 
         // Revoke current refresh token
         existingRefreshToken.IsRevoked = true;
         existingRefreshToken.RevokedOn = DateTime.UtcNow;
 
-        return await GenerateAuthResponseAsync(user);
+        return Result.Success(await GenerateAuthResponseAsync(user));
     }
 
-    public async Task<bool> RevokeTokenAsync(string refreshToken)
+    public async Task<Result> RevokeTokenAsync(string refreshToken)
     {
         var user = await _context.Users
             .Include(u => u.RefreshTokens)
             .FirstOrDefaultAsync(u => u.RefreshTokens.Any(t => t.Token == refreshToken));
 
-        if (user is null) return false;
+        if (user is null)
+            return Result.Failure(UserErrors.InvalidRefreshToken);
 
         var existingRefreshToken = user.RefreshTokens.Single(t => t.Token == refreshToken);
 
-        if (!existingRefreshToken.IsActive) return false;
+        if (!existingRefreshToken.IsActive)
+            return Result.Failure(UserErrors.RefreshTokenInactive);
 
         existingRefreshToken.IsRevoked = true;
         existingRefreshToken.RevokedOn = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
-        return true;
+        return Result.Success();
     }
 
     private async Task<AuthResponseDto> GenerateAuthResponseAsync(ApplicationUser user)

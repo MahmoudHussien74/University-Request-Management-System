@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using URMS.Api.Extensions;
 using URMS.Application.Contracts.Identity;
 using URMS.Application.DTOs.Auth;
 using URMS.Domain.Constants;
@@ -23,10 +24,11 @@ public class UsersController : ControllerBase
     /// </summary>
     [HttpGet("pending-students")]
     [HasPermission(Permissions.Users.ApproveRegistration)]
-    public async Task<ActionResult<List<PendingStudentDto>>> GetPendingStudents()
+    public async Task<IActionResult> GetPendingStudents()
     {
         var result = await _userManagementService.GetPendingStudentsAsync();
-        return Ok(result);
+
+        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }
 
     /// <summary>
@@ -34,10 +36,11 @@ public class UsersController : ControllerBase
     /// </summary>
     [HttpPost("{studentId}/approve")]
     [HasPermission(Permissions.Users.ApproveRegistration)]
-    public async Task<ActionResult<UserResponse>> ApproveStudent(string studentId)
+    public async Task<IActionResult> ApproveStudent(string studentId)
     {
         var result = await _userManagementService.ApproveStudentAsync(studentId);
-        return Ok(result);
+
+        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }
 
     /// <summary>
@@ -47,8 +50,11 @@ public class UsersController : ControllerBase
     [HasPermission(Permissions.Users.Update)]
     public async Task<IActionResult> DeactivateAccount(string userId)
     {
-        await _userManagementService.DeactivateAccountAsync(userId);
-        return Ok(new { message = "Account deactivated successfully." });
+        var result = await _userManagementService.DeactivateAccountAsync(userId);
+
+        return result.IsSuccess
+            ? Ok(new { message = "Account deactivated successfully." })
+            : result.ToProblem();
     }
 
     /// <summary>
@@ -58,7 +64,10 @@ public class UsersController : ControllerBase
     [HasPermission(Permissions.Users.Update)]
     public async Task<IActionResult> ReactivateAccount(string userId)
     {
-        await _userManagementService.ReactivateAccountAsync(userId);
-        return Ok(new { message = "Account reactivated successfully." });
+        var result = await _userManagementService.ReactivateAccountAsync(userId);
+
+        return result.IsSuccess
+            ? Ok(new { message = "Account reactivated successfully." })
+            : result.ToProblem();
     }
 }
