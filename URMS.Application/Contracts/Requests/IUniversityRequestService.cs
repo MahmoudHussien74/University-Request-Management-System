@@ -7,6 +7,7 @@ namespace URMS.Application.Contracts.Requests;
 public interface IUniversityRequestService
 {
     Task<Result<UniversityRequestResponseDto>> CreateRequestAsync(string studentId, CreateUniversityRequestDto dto);
+    List<RequestTypeInfoDto> GetRequestTypes();
     Task<Result<List<UniversityRequestResponseDto>>> GetMyRequestsAsync(string studentId);
     Task<Result<List<UniversityRequestResponseDto>>> GetAllRequestsAsync(RequestStatus? status = null);
     Task<Result<List<UniversityRequestResponseDto>>> GetAdvisorRequestsAsync(string advisorId, RequestStatus? status = null);

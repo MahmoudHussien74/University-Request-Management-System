@@ -24,6 +24,17 @@ public class RequestsController : ControllerBase
     }
 
     /// <summary>
+    /// Get all available university request types with IDs and Arabic names for frontend dropdowns.
+    /// </summary>
+    [HttpGet("types")]
+    [AllowAnonymous]
+    public IActionResult GetRequestTypes()
+    {
+        var types = _requestService.GetRequestTypes();
+        return Ok(types);
+    }
+
+    /// <summary>
     /// Student submits a new university request (Full / Extra Hours).
     /// </summary>
     [HttpPost]

@@ -83,6 +83,20 @@ public class UniversityRequestService : IUniversityRequestService
         return Result.Success(MapToDto(request, student, advisor, null));
     }
 
+    public List<RequestTypeInfoDto> GetRequestTypes()
+    {
+        return new List<RequestTypeInfoDto>
+        {
+            new(0, RequestType.FullHoursRegistration.ToString(), "تسجيل الساعات كاملة لمرة واحدة — معدل تراكمي من 1.95 وحتى أقل من 2"),
+            new(1, RequestType.ExtraHoursRegistration.ToString(), "تسجيل ساعات إضافية — معدل تراكمي من 3.3 وحتى أقل من 3.75"),
+            new(2, RequestType.EnrollmentCertificate.ToString(), "طلب شهادة إثبات قيد"),
+            new(3, RequestType.AcademicTranscript.ToString(), "طلب كشف درجات / بيان درجات"),
+            new(4, RequestType.CourseWithdrawal.ToString(), "طلب عذر أو انسحاب من مقرر"),
+            new(5, RequestType.GradeAppeal.ToString(), "طلب التماس إعادة تصحيح / إعادة رصد"),
+            new(6, RequestType.Other.ToString(), "طلب جامعي آخر مخصص")
+        };
+    }
+
     public async Task<Result<List<UniversityRequestResponseDto>>> GetMyRequestsAsync(string studentId)
     {
         var requestRepo = _unitOfWork.Repository<UniversityRequest>();
