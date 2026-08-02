@@ -1,5 +1,3 @@
-using URMS.Domain.Enums;
-
 namespace URMS.Application.DTOs.Requests;
 
 public record UniversityRequestResponseDto(
@@ -8,11 +6,12 @@ public record UniversityRequestResponseDto(
     string StudentNameAr,
     string StudentNameEn,
     string? UniversityCode,
-    RequestType RequestType,
-    RequestStatus Status,
-    decimal GPA,
-    int RequestedHours,
+    string RequestType,
+    string Status,
+    decimal? GPA,
+    int? RequestedHours,
     string? Notes,
+    Dictionary<string, string>? AdditionalData,
     string? AdvisorId,
     string? AdvisorName,
     string? RejectionReason,
@@ -20,5 +19,6 @@ public record UniversityRequestResponseDto(
     string? StaffName,
     DateTime CreatedAt,
     DateTime? ApprovedAt,
-    DateTime? CompletedAt
+    DateTime? CompletedAt,
+    List<RequestHistoryLogDto>? HistoryLogs = null
 );

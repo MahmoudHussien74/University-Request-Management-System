@@ -1,12 +1,15 @@
-using Microsoft.AspNetCore.Authentication.Cookies;
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
 using URMS.Application.Contracts.Identity;
 using URMS.Domain.Entities;
+using URMS.Domain.Settings;
 using URMS.Infrastructure.Identity;
 using URMS.Infrastructure.PermissionAuthorization;
 using URMS.Infrastructure.Persistence;
@@ -17,6 +20,9 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
     {
+        // ─── Options Pattern: Bind JwtSettings from appsettings.json ───
+        services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
+
         // ─── 1. DbContext ───
         services.AddDbContext<AppDbContext>(options =>
             options.UseSqlServer(
@@ -36,7 +42,44 @@ public static class DependencyInjection
         .AddEntityFrameworkStores<AppDbContext>()
         .AddDefaultTokenProviders();
 
-        // ─── 3. Cookie & Session Authentication ───
+        // ─── 3. JWT & Cookie Dual Authentication ───
+        var jwtSettings = configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>()
+            ?? throw new InvalidOperationException("JwtSettings section is missing in appsettings.json");
+
+        services.AddAuthentication(options =>
+        {
+            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        })
+        .AddJwtBearer(options =>
+        {
+            options.SaveToken = true;
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key)),
+                ValidateIssuer = true,
+                ValidIssuer = jwtSettings.Issuer,
+                ValidateAudience = true,
+                ValidAudience = jwtSettings.Audience,
+                ValidateLifetime = true,
+                ClockSkew = TimeSpan.Zero
+            };
+
+            // Read JWT token from HttpOnly Cookie if Authorization header is missing
+            options.Events = new JwtBearerEvents
+            {
+                OnMessageReceived = context =>
+                {
+                    if (context.Request.Cookies.TryGetValue("accessToken", out var token))
+                    {
+                        context.Token = token;
+                    }
+                    return Task.CompletedTask;
+                }
+            };
+        });
+
         services.ConfigureApplicationCookie(options =>
         {
             options.Cookie.Name = "URMS.AuthSession";
@@ -57,9 +100,11 @@ public static class DependencyInjection
             };
         });
 
-        // ─── 4. Custom Auth, Permission & Request Services ───
+        // ─── 4. Custom Auth, JWT, Permission & Request Services ───
+        services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IRolePermissionService, RolePermissionService>();
+        services.AddScoped<IUserManagementService, UserManagementService>();
         services.AddScoped<URMS.Application.Contracts.Requests.IUniversityRequestService, URMS.Infrastructure.Services.UniversityRequestService>();
 
         // ─── 5. Dynamic Permission Policy Provider & Handler ───

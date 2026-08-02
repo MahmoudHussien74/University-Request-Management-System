@@ -104,4 +104,19 @@ public class RequestsController : ControllerBase
         var result = await _requestService.ConfirmByStaffAsync(id, staffId, dto);
         return Ok(result);
     }
+
+    /// <summary>
+    /// SuperAdmin directly overrides request status to any state (Completed, Rejected, etc.).
+    /// </summary>
+    [HttpPost("{id:int}/admin-override")]
+    [Authorize(Roles = AppRoles.SuperAdmin)]
+    public async Task<ActionResult<UniversityRequestResponseDto>> AdminOverride(int id, [FromBody] AdminOverrideRequestDto dto)
+    {
+        var adminId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(adminId))
+            return Unauthorized();
+
+        var result = await _requestService.OverrideStatusByAdminAsync(id, adminId, dto);
+        return Ok(result);
+    }
 }

@@ -10,8 +10,13 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     {
     }
 
+    public DbSet<Student> Students => Set<Student>();
+    public DbSet<AcademicAdvisor> AcademicAdvisors => Set<AcademicAdvisor>();
+    public DbSet<Staff> Staff => Set<Staff>();
     public DbSet<UniversityRequest> UniversityRequests => Set<UniversityRequest>();
+    public DbSet<RequestHistoryLog> RequestHistoryLogs => Set<RequestHistoryLog>();
     public DbSet<AvailabilityChangeRequest> AvailabilityChangeRequests => Set<AvailabilityChangeRequest>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

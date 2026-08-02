@@ -15,6 +15,5 @@ public record RegisterStudentRequest(
     string PhoneNumber,
     string? AlternatePhone,
     string Address,
-    string Password,
-    string ConfirmPassword
+    string Password
 );

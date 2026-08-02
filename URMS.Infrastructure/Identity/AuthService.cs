@@ -4,6 +4,8 @@ using URMS.Application.Contracts.Identity;
 using URMS.Application.DTOs.Auth;
 using URMS.Domain.Constants;
 using URMS.Domain.Entities;
+using URMS.Domain.Enums;
+using URMS.Infrastructure.Persistence;
 
 namespace URMS.Infrastructure.Identity;
 
@@ -12,43 +14,56 @@ public class AuthService : IAuthService
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly IRolePermissionService _rolePermissionService;
+    private readonly IJwtTokenGenerator _jwtTokenGenerator;
+    private readonly AppDbContext _context;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
-        IRolePermissionService rolePermissionService)
+        IRolePermissionService rolePermissionService,
+        IJwtTokenGenerator jwtTokenGenerator,
+        AppDbContext context)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _rolePermissionService = rolePermissionService;
+        _jwtTokenGenerator = jwtTokenGenerator;
+        _context = context;
     }
 
-    public async Task<UserResponse> LoginAsync(LoginRequest request)
+    public async Task<AuthResponseDto> LoginAsync(LoginRequest request)
     {
         var user = await _userManager.FindByEmailAsync(request.Email);
+        if (user is not null)
+        {
+            await _context.Entry(user).Reference(u => u.Student).LoadAsync();
+            await _context.Entry(user).Reference(u => u.Advisor).LoadAsync();
+            await _context.Entry(user).Reference(u => u.Staff).LoadAsync();
+        }
+
         if (user is null)
             throw new Exception("Invalid email or password.");
 
         if (!user.IsActive)
             throw new Exception("Account is deactivated.");
 
-        var result = await _signInManager.PasswordSignInAsync(user, request.Password, request.RememberMe, lockoutOnFailure: false);
-        if (!result.Succeeded)
+        if (!user.IsApproved)
+            throw new Exception("Your account is pending approval by your Academic Advisor.");
+
+        var isPasswordValid = await _userManager.CheckPasswordAsync(user, request.Password);
+        if (!isPasswordValid)
             throw new Exception("Invalid email or password.");
 
-        return await MapToUserResponseAsync(user);
+        return await GenerateAuthResponseAsync(user);
     }
 
     public async Task<UserResponse> RegisterStudentAsync(RegisterStudentRequest request)
     {
-        if (request.Password != request.ConfirmPassword)
-            throw new Exception("Password and confirm password do not match.");
-
         var existingUser = await _userManager.FindByEmailAsync(request.Email);
         if (existingUser is not null)
             throw new Exception("User with this email already exists.");
 
-        var student = new ApplicationUser
+        var user = new ApplicationUser
         {
             UserName = request.Email,
             Email = request.Email,
@@ -61,15 +76,19 @@ public class AuthService : IAuthService
             SecondNameEn = request.SecondNameEn,
             ThirdNameEn = request.ThirdNameEn,
             LastNameEn = request.LastNameEn,
-            UniversityCode = request.UniversityCode,
-            NationalId = request.NationalId,
             AlternatePhone = request.AlternatePhone,
-            Address = request.Address,
+            UserType = UserType.Student,
             IsApproved = false,  // Student registration requires approval from advisor / secretary
-            IsActive = true
+            IsActive = true,
+            Student = new Student
+            {
+                UniversityCode = request.UniversityCode,
+                NationalId = request.NationalId,
+                Address = request.Address
+            }
         };
 
-        var result = await _userManager.CreateAsync(student, request.Password);
+        var result = await _userManager.CreateAsync(user, request.Password);
         if (!result.Succeeded)
         {
             var errors = string.Join(", ", result.Errors.Select(e => e.Description));
@@ -77,9 +96,23 @@ public class AuthService : IAuthService
         }
 
         // Assign default Student role
-        await _userManager.AddToRoleAsync(student, AppRoles.Student);
+        await _userManager.AddToRoleAsync(user, AppRoles.Student);
 
-        return await MapToUserResponseAsync(student);
+        var roles = await _userManager.GetRolesAsync(user);
+        var permissions = await _rolePermissionService.GetUserPermissionsAsync(user.Id);
+
+        return new UserResponse(
+            user.Id,
+            user.Email!,
+            user.FullNameAr,
+            user.FullNameEn,
+            user.Student?.UniversityCode,
+            null,
+            user.IsApproved,
+            user.IsActive,
+            roles,
+            permissions
+        );
     }
 
     public async Task LogoutAsync()
@@ -89,9 +122,6 @@ public class AuthService : IAuthService
 
     public async Task ChangePasswordAsync(string userId, ChangePasswordRequest request)
     {
-        if (request.NewPassword != request.ConfirmNewPassword)
-            throw new Exception("New password and confirm password do not match.");
-
         var user = await _userManager.FindByIdAsync(userId);
         if (user is null)
             throw new Exception("User not found.");
@@ -106,14 +136,14 @@ public class AuthService : IAuthService
 
     public async Task<UserResponse?> GetCurrentUserAsync(string userId)
     {
-        var user = await _userManager.FindByIdAsync(userId);
+        var user = await _context.Users
+            .Include(u => u.Student)
+            .Include(u => u.Advisor)
+            .Include(u => u.Staff)
+            .FirstOrDefaultAsync(u => u.Id == userId);
+
         if (user is null) return null;
 
-        return await MapToUserResponseAsync(user);
-    }
-
-    private async Task<UserResponse> MapToUserResponseAsync(ApplicationUser user)
-    {
         var roles = await _userManager.GetRolesAsync(user);
         var permissions = await _rolePermissionService.GetUserPermissionsAsync(user.Id);
 
@@ -122,12 +152,84 @@ public class AuthService : IAuthService
             user.Email!,
             user.FullNameAr,
             user.FullNameEn,
-            user.UniversityCode,
-            user.AdvisorCode,
+            user.Student?.UniversityCode,
+            user.Advisor?.AdvisorCode,
             user.IsApproved,
             user.IsActive,
             roles,
             permissions
+        );
+    }
+
+    public async Task<AuthResponseDto> RefreshTokenAsync(string token, string refreshToken)
+    {
+        var user = await _context.Users
+            .Include(u => u.Student)
+            .Include(u => u.Advisor)
+            .Include(u => u.Staff)
+            .Include(u => u.RefreshTokens)
+            .FirstOrDefaultAsync(u => u.RefreshTokens.Any(t => t.Token == refreshToken));
+
+        if (user is null)
+            throw new Exception("Invalid refresh token.");
+
+        var existingRefreshToken = user.RefreshTokens.Single(t => t.Token == refreshToken);
+
+        if (!existingRefreshToken.IsActive)
+            throw new Exception("Refresh token is inactive or expired.");
+
+        // Revoke current refresh token
+        existingRefreshToken.IsRevoked = true;
+        existingRefreshToken.RevokedOn = DateTime.UtcNow;
+
+        return await GenerateAuthResponseAsync(user);
+    }
+
+    public async Task<bool> RevokeTokenAsync(string refreshToken)
+    {
+        var user = await _context.Users
+            .Include(u => u.RefreshTokens)
+            .FirstOrDefaultAsync(u => u.RefreshTokens.Any(t => t.Token == refreshToken));
+
+        if (user is null) return false;
+
+        var existingRefreshToken = user.RefreshTokens.Single(t => t.Token == refreshToken);
+
+        if (!existingRefreshToken.IsActive) return false;
+
+        existingRefreshToken.IsRevoked = true;
+        existingRefreshToken.RevokedOn = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    private async Task<AuthResponseDto> GenerateAuthResponseAsync(ApplicationUser user)
+    {
+        var roles = await _userManager.GetRolesAsync(user);
+        var permissions = await _rolePermissionService.GetUserPermissionsAsync(user.Id);
+
+        var (jwtToken, jwtExpiresOn) = _jwtTokenGenerator.GenerateAccessToken(user, roles, permissions);
+        var refreshToken = _jwtTokenGenerator.GenerateRefreshToken();
+
+        user.RefreshTokens.Add(refreshToken);
+        await _context.SaveChangesAsync();
+
+        return new AuthResponseDto(
+            user.Id,
+            user.Email!,
+            user.FullNameAr,
+            user.FullNameEn,
+            user.Student?.UniversityCode,
+            user.Advisor?.AdvisorCode,
+            user.IsApproved,
+            user.IsActive,
+            roles,
+            permissions,
+            jwtToken,
+            jwtExpiresOn,
+            refreshToken.Token,
+            refreshToken.ExpiresOn
         );
     }
 }

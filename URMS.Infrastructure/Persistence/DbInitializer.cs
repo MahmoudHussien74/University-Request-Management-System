@@ -42,6 +42,7 @@ public static class DbInitializer
                 LastNameAr = "النظام",
                 FirstNameEn = "Super",
                 LastNameEn = "Admin",
+                UserType = URMS.Domain.Enums.UserType.SuperAdmin,
                 IsApproved = true,
                 IsActive = true,
                 EmailConfirmed = true

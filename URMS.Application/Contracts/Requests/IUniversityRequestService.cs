@@ -11,4 +11,5 @@ public interface IUniversityRequestService
     Task<UniversityRequestResponseDto?> GetRequestByIdAsync(int requestId);
     Task<UniversityRequestResponseDto> ReviewByAdvisorAsync(int requestId, string advisorId, AdvisorReviewRequestDto dto);
     Task<UniversityRequestResponseDto> ConfirmByStaffAsync(int requestId, string staffId, StaffConfirmRequestDto dto);
+    Task<UniversityRequestResponseDto> OverrideStatusByAdminAsync(int requestId, string adminId, AdminOverrideRequestDto dto);
 }

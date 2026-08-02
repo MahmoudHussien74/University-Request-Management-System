@@ -20,7 +20,7 @@ public class AuthController : ControllerBase
     /// <summary>
     /// Student registration — requires approval before activation.
     /// </summary>
-    [HttpPost("register-student")]
+    [HttpPost("register")]
     [AllowAnonymous]
     public async Task<ActionResult<UserResponse>> RegisterStudent([FromBody] RegisterStudentRequest request)
     {
@@ -29,24 +29,74 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// User Login — authenticates using Cookies & Session.
+    /// User Login — generates JWT Access Token + Refresh Token and sets HttpOnly Cookies.
     /// </summary>
     [HttpPost("login")]
     [AllowAnonymous]
-    public async Task<ActionResult<UserResponse>> Login([FromBody] LoginRequest request)
+    public async Task<ActionResult<AuthResponseDto>> Login([FromBody] LoginRequest request)
     {
         var response = await _authService.LoginAsync(request);
+        SetAuthCookies(response.Token, response.RefreshToken, response.RefreshTokenExpiresOn);
         return Ok(response);
     }
 
     /// <summary>
-    /// User Logout — clears auth session cookie.
+    /// Refresh JWT Access Token using Refresh Token.
+    /// </summary>
+    [HttpPost("refresh-token")]
+    [AllowAnonymous]
+    public async Task<ActionResult<AuthResponseDto>> RefreshToken([FromBody] RefreshTokenRequest? request)
+    {
+        var token = request?.Token ?? Request.Cookies["accessToken"];
+        var refreshToken = request?.RefreshToken ?? Request.Cookies["refreshToken"];
+
+        if (string.IsNullOrEmpty(refreshToken))
+            return BadRequest("Refresh token is required.");
+
+        var response = await _authService.RefreshTokenAsync(token ?? string.Empty, refreshToken);
+        SetAuthCookies(response.Token, response.RefreshToken, response.RefreshTokenExpiresOn);
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// Revoke a refresh token.
+    /// </summary>
+    [HttpPost("revoke-token")]
+    [Authorize]
+    public async Task<IActionResult> RevokeToken([FromBody] RefreshTokenRequest? request)
+    {
+        var refreshToken = request?.RefreshToken ?? Request.Cookies["refreshToken"];
+        if (string.IsNullOrEmpty(refreshToken))
+            return BadRequest("Refresh token is required.");
+
+        var result = await _authService.RevokeTokenAsync(refreshToken);
+        if (!result)
+            return BadRequest("Invalid or already revoked token.");
+
+        Response.Cookies.Delete("accessToken");
+        Response.Cookies.Delete("refreshToken");
+
+        return Ok(new { message = "Token revoked successfully." });
+    }
+
+    /// <summary>
+    /// User Logout — revokes refresh token and clears auth cookies.
     /// </summary>
     [HttpPost("logout")]
     [Authorize]
     public async Task<IActionResult> Logout()
     {
+        var refreshToken = Request.Cookies["refreshToken"];
+        if (!string.IsNullOrEmpty(refreshToken))
+        {
+            await _authService.RevokeTokenAsync(refreshToken);
+        }
+
         await _authService.LogoutAsync();
+
+        Response.Cookies.Delete("accessToken");
+        Response.Cookies.Delete("refreshToken");
+
         return Ok(new { message = "Logged out successfully." });
     }
 
@@ -81,5 +131,27 @@ public class AuthController : ControllerBase
             return NotFound();
 
         return Ok(user);
+    }
+
+    private void SetAuthCookies(string accessToken, string refreshToken, DateTime refreshTokenExpiresOn)
+    {
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            SameSite = SameSiteMode.Lax,
+            Secure = false // set true in production HTTPS
+        };
+
+        Response.Cookies.Append("accessToken", accessToken, cookieOptions);
+        Response.Cookies.Append("refreshToken", refreshToken, cookieOptions.WithExpires(refreshTokenExpiresOn));
+    }
+}
+
+public static class CookieOptionsExtensions
+{
+    public static CookieOptions WithExpires(this CookieOptions options, DateTime expires)
+    {
+        options.Expires = expires;
+        return options;
     }
 }

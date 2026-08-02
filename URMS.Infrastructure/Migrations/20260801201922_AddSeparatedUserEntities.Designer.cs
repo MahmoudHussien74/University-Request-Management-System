@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using URMS.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using URMS.Infrastructure.Persistence;
 namespace URMS.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260801201922_AddSeparatedUserEntities")]
+    partial class AddSeparatedUserEntities
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -395,60 +398,6 @@ namespace URMS.Infrastructure.Migrations
                     b.ToTable("RefreshTokens");
                 });
 
-            modelBuilder.Entity("URMS.Domain.Entities.RequestHistoryLog", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ActionById")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<DateTime>("ActionDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ActionMessage")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("NewStatus")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<int>("OldStatus")
-                        .HasColumnType("int");
-
-                    b.Property<int>("UniversityRequestId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("UpdatedBy")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ActionById");
-
-                    b.HasIndex("UniversityRequestId");
-
-                    b.ToTable("RequestHistoryLogs");
-                });
-
             modelBuilder.Entity("URMS.Domain.Entities.Staff", b =>
                 {
                     b.Property<int>("Id")
@@ -545,9 +494,6 @@ namespace URMS.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("AdditionalDataJson")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("AdvisorId")
                         .HasColumnType("nvarchar(450)");
 
@@ -567,7 +513,7 @@ namespace URMS.Infrastructure.Migrations
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<decimal?>("GPA")
+                    b.Property<decimal>("GPA")
                         .HasPrecision(3, 2)
                         .HasColumnType("decimal(3,2)");
 
@@ -708,25 +654,6 @@ namespace URMS.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("URMS.Domain.Entities.RequestHistoryLog", b =>
-                {
-                    b.HasOne("URMS.Domain.Entities.ApplicationUser", "ActionBy")
-                        .WithMany()
-                        .HasForeignKey("ActionById")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("URMS.Domain.Entities.UniversityRequest", "UniversityRequest")
-                        .WithMany("HistoryLogs")
-                        .HasForeignKey("UniversityRequestId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ActionBy");
-
-                    b.Navigation("UniversityRequest");
-                });
-
             modelBuilder.Entity("URMS.Domain.Entities.Staff", b =>
                 {
                     b.HasOne("URMS.Domain.Entities.ApplicationUser", "User")
@@ -783,11 +710,6 @@ namespace URMS.Infrastructure.Migrations
                     b.Navigation("Staff");
 
                     b.Navigation("Student");
-                });
-
-            modelBuilder.Entity("URMS.Domain.Entities.UniversityRequest", b =>
-                {
-                    b.Navigation("HistoryLogs");
                 });
 #pragma warning restore 612, 618
         }

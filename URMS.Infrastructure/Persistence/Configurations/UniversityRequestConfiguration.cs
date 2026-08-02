@@ -1,17 +1,16 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using URMS.Domain.Entities;
-
 namespace URMS.Infrastructure.Persistence.Configurations;
-
 public class UniversityRequestConfiguration : IEntityTypeConfiguration<UniversityRequest>
 {
     public void Configure(EntityTypeBuilder<UniversityRequest> builder)
     {
-        builder.Property(r => r.GPA).HasPrecision(3, 2).IsRequired();
+        builder.Property(r => r.GPA).HasPrecision(3, 2).IsRequired(false);
         builder.Property(r => r.Notes).HasMaxLength(1000);
         builder.Property(r => r.RejectionReason).HasMaxLength(1000);
         builder.Property(r => r.ConfirmationToken).HasMaxLength(256);
+        builder.Property(r => r.AdditionalDataJson).HasColumnType("nvarchar(max)");
 
         builder.HasOne(r => r.Student)
             .WithMany()
