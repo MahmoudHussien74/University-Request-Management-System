@@ -5,23 +5,17 @@ namespace URMS.Domain.Entities;
 
 /// <summary>
 /// Core entity representing a student request in the university system.
-/// Supports academic registration, certificates, transcripts, and custom requests.
+/// Powered dynamically by FormDefinition schema and AdditionalDataJson.
 /// </summary>
 public class UniversityRequest : AuditableEntity
 {
-    public RequestType Type { get; set; }
     public RequestStatus Status { get; set; } = RequestStatus.Pending;
 
     // ─── Dynamic Form Definition Link ───
     public int? FormDefinitionId { get; set; }
     public FormDefinition? FormDefinition { get; set; }
 
-    // ─── Student Info (Optional depending on request type) ───
-    public decimal? GPA { get; set; }
-    public int? RequestedHours { get; set; }
-
-    // ─── Notes, Rejection & Dynamic Form Data ───
-    public string? Notes { get; set; }
+    // ─── Dynamic Form Data & Rejection Reason ───
     public string? RejectionReason { get; set; }
     public string? AdditionalDataJson { get; set; }     // Holds dynamic key-value form metadata as JSON
 
@@ -29,7 +23,6 @@ public class UniversityRequest : AuditableEntity
     public string? AdvisorId { get; set; }
     public ApplicationUser? Advisor { get; set; }
     public DateTime? AdvisorReviewedAt { get; set; }
-    public bool? IsGpaConfirmedByAdvisor { get; set; }
 
     // ─── Staff Confirmation ───
     public string? StaffId { get; set; }

@@ -59,7 +59,6 @@ public class UniversityRequestService : IUniversityRequestService
         var request = new UniversityRequest
         {
             StudentId = studentId,
-            Type = RequestType.Other,
             FormDefinitionId = dto.FormDefinitionId,
             Status = RequestStatus.Pending,
             AdditionalDataJson = jsonMetadata,
@@ -210,7 +209,6 @@ public class UniversityRequestService : IUniversityRequestService
         if (dto.IsApproved)
         {
             request.Status = RequestStatus.AdvisorApproved;
-            request.IsGpaConfirmedByAdvisor = true;
         }
         else
         {
@@ -311,7 +309,6 @@ public class UniversityRequestService : IUniversityRequestService
             {
                 request.AdvisorId = adminId;
                 request.AdvisorReviewedAt = DateTime.UtcNow;
-                request.IsGpaConfirmedByAdvisor = true;
             }
         }
         else if (dto.TargetStatus == RequestStatus.Rejected)
@@ -322,13 +319,6 @@ public class UniversityRequestService : IUniversityRequestService
         {
             request.AdvisorId = adminId;
             request.AdvisorReviewedAt = DateTime.UtcNow;
-        }
-
-        if (!string.IsNullOrEmpty(dto.ReasonOrNotes))
-        {
-            request.Notes = string.IsNullOrEmpty(request.Notes)
-                ? $"[Admin Override]: {dto.ReasonOrNotes}"
-                : $"{request.Notes} | [Admin Override]: {dto.ReasonOrNotes}";
         }
 
         request.HistoryLogs.Add(new RequestHistoryLog
