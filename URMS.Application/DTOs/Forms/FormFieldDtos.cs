@@ -3,7 +3,6 @@ using URMS.Domain.Enums;
 namespace URMS.Application.DTOs.Forms;
 
 public record CreateFormFieldDto(
-    string FieldKey,
     string LabelAr,
     string LabelEn,
     string? Placeholder,

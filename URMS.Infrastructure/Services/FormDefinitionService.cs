@@ -41,7 +41,7 @@ public class FormDefinitionService : IFormDefinitionService
             {
                 form.Fields.Add(new FormFieldDefinition
                 {
-                    FieldKey = f.FieldKey,
+                    FieldKey = GenerateFieldKey(f.LabelEn),
                     LabelAr = f.LabelAr,
                     LabelEn = f.LabelEn,
                     Placeholder = f.Placeholder,
@@ -91,7 +91,7 @@ public class FormDefinitionService : IFormDefinitionService
                 form.Fields.Add(new FormFieldDefinition
                 {
                     FormDefinitionId = form.Id,
-                    FieldKey = f.FieldKey,
+                    FieldKey = GenerateFieldKey(f.LabelEn),
                     LabelAr = f.LabelAr,
                     LabelEn = f.LabelEn,
                     Placeholder = f.Placeholder,
@@ -265,5 +265,21 @@ public class FormDefinitionService : IFormDefinitionService
             fieldDtos,
             requestsCount
         );
+    }
+
+    private static string GenerateFieldKey(string labelEn)
+    {
+        if (string.IsNullOrWhiteSpace(labelEn))
+            return "field_" + Guid.NewGuid().ToString("N")[..8];
+
+        var words = System.Text.RegularExpressions.Regex.Matches(labelEn, @"[A-Za-z0-9]+")
+            .Select(m => m.Value)
+            .ToList();
+
+        if (words.Count == 0)
+            return "field_" + Guid.NewGuid().ToString("N")[..8];
+
+        var camelCase = words[0].ToLowerInvariant() + string.Concat(words.Skip(1).Select(w => char.ToUpperInvariant(w[0]) + (w.Length > 1 ? w[1..].ToLowerInvariant() : "")));
+        return camelCase;
     }
 }
