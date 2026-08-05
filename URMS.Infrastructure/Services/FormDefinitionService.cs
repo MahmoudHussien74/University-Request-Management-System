@@ -192,11 +192,11 @@ public class FormDefinitionService : IFormDefinitionService
             f => f.IsActive && !f.IsDeleted &&
                  (!f.StartDate.HasValue || f.StartDate.Value <= now) &&
                  (!f.EndDate.HasValue || f.EndDate.Value >= now),
-            q => q.Include(f => f.Fields.OrderBy(field => field.Order)),
+            q => q.Include(f => f.Fields.OrderBy(field => field.Order)).Include(f => f.Requests),
             orderBy: q => q.OrderByDescending(f => f.CreatedAt)
         );
 
-        return Result.Success(forms.Select(f => MapToResponseDto(f, 0)).ToList());
+        return Result.Success(forms.Select(f => MapToResponseDto(f, f.Requests?.Count ?? 0)).ToList());
     }
 
     public async Task<Result<bool>> ValidateSubmissionAnswersAsync(int formDefinitionId, Dictionary<string, string>? answers)
