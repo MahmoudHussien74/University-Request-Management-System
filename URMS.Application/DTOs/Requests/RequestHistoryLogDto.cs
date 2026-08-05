@@ -5,6 +5,5 @@ public record RequestHistoryLogDto(
     string OldStatusName,
     string NewStatusName,
     string ActionMessage,
-    string? Notes,
     DateTime ActionDate
 );

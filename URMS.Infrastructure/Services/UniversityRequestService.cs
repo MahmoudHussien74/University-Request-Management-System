@@ -8,7 +8,6 @@ using URMS.Domain.Abstractions;
 using URMS.Domain.Constants;
 using URMS.Domain.Entities;
 using URMS.Domain.Enums;
-
 namespace URMS.Infrastructure.Services;
 
 public class UniversityRequestService : IUniversityRequestService
@@ -84,6 +83,7 @@ public class UniversityRequestService : IUniversityRequestService
 
         return Result.Success(MapToDto(request, student, advisor, null));
     }
+
 
     public List<RequestTypeInfoDto> GetRequestTypes()
     {
@@ -374,7 +374,6 @@ public class UniversityRequestService : IUniversityRequestService
                     l.OldStatus.ToString(),
                     l.NewStatus.ToString(),
                     l.ActionMessage,
-                    l.Notes,
                     l.ActionDate
                 )).ToList();
         }
