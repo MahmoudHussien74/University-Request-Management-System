@@ -26,5 +26,10 @@ public class UniversityRequestConfiguration : IEntityTypeConfiguration<Universit
             .WithMany()
             .HasForeignKey(r => r.StaffId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(r => r.FormDefinition)
+            .WithMany(f => f.Requests)
+            .HasForeignKey(r => r.FormDefinitionId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

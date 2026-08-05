@@ -111,6 +111,7 @@ public static class DependencyInjection
         services.AddScoped<IUserManagementService, UserManagementService>();
         services.AddScoped<IAdvisorAssignmentService, AdvisorAssignmentService>();
         services.AddScoped<URMS.Application.Contracts.Requests.IUniversityRequestService, URMS.Infrastructure.Services.UniversityRequestService>();
+        services.AddScoped<URMS.Application.Contracts.Forms.IFormDefinitionService, URMS.Infrastructure.Services.FormDefinitionService>();
 
         // ─── 5. Dynamic Permission Policy Provider & Handler ───
         services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();

@@ -21,6 +21,21 @@ public static class RequestErrors
         new("Request.GpaTooLow", "Extra hours registration requires a minimum GPA of 3.00.", 400);
 }
 
+public static class FormErrors
+{
+    public static readonly Error FormNotFound =
+        new("Form.NotFound", "Form definition not found.", 404);
+
+    public static readonly Error FormClosed =
+        new("Form.Closed", "Form submission is currently closed by administration.", 400);
+
+    public static Error RequiredFieldMissing(string labelAr) =>
+        new("Form.RequiredFieldMissing", $"الحقل الإجباري [{labelAr}] غير موجود أو فارغ.", 400);
+
+    public static Error InvalidFieldType(string labelAr) =>
+        new("Form.InvalidFieldType", $"القيمة المرفقة للحقل [{labelAr}] غير صالحة.", 400);
+}
+
 public static class UserErrors
 {
     public static readonly Error UserNotFound =

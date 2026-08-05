@@ -14,10 +14,14 @@ namespace URMS.Infrastructure.Services;
 public class UniversityRequestService : IUniversityRequestService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly URMS.Application.Contracts.Forms.IFormDefinitionService _formService;
 
-    public UniversityRequestService(IUnitOfWork unitOfWork)
+    public UniversityRequestService(
+        IUnitOfWork unitOfWork,
+        URMS.Application.Contracts.Forms.IFormDefinitionService formService)
     {
         _unitOfWork = unitOfWork;
+        _formService = formService;
     }
 
     public async Task<Result<UniversityRequestResponseDto>> CreateRequestAsync(string studentId, CreateUniversityRequestDto dto)
@@ -36,12 +40,10 @@ public class UniversityRequestService : IUniversityRequestService
         if (!student.IsApproved)
             return Result.Failure<UniversityRequestResponseDto>(RequestErrors.StudentNotApproved);
 
-        // Rule check: Extra Hours Registration requires GPA >= 3.0
-        if (dto.RequestType == RequestType.ExtraHoursRegistration)
-        {
-            if (!dto.Gpa.HasValue || dto.Gpa < 3.0m)
-                return Result.Failure<UniversityRequestResponseDto>(RequestErrors.GpaTooLow);
-        }
+        // Validate dynamic form rules (FormDefinitionId is now required)
+        var formValResult = await _formService.ValidateSubmissionAnswersAsync(dto.FormDefinitionId, dto.AdditionalData);
+        if (formValResult.IsFailure)
+            return Result.Failure<UniversityRequestResponseDto>(formValResult.Error);
 
         string? jsonMetadata = dto.AdditionalData is not null && dto.AdditionalData.Count > 0
             ? JsonSerializer.Serialize(dto.AdditionalData)
@@ -58,11 +60,9 @@ public class UniversityRequestService : IUniversityRequestService
         var request = new UniversityRequest
         {
             StudentId = studentId,
-            Type = dto.RequestType,
+            Type = RequestType.Other,
+            FormDefinitionId = dto.FormDefinitionId,
             Status = RequestStatus.Pending,
-            GPA = dto.Gpa,
-            RequestedHours = dto.RequestedHours,
-            Notes = dto.Notes,
             AdditionalDataJson = jsonMetadata,
             AdvisorId = advisorId,
             CreatedAt = DateTime.UtcNow
@@ -73,12 +73,14 @@ public class UniversityRequestService : IUniversityRequestService
             ActionById = studentId,
             OldStatus = RequestStatus.Pending,
             NewStatus = RequestStatus.Pending,
-            ActionMessage = RequestLogMessages.CreatedByStudent,
-            Notes = dto.Notes
+            ActionMessage = RequestLogMessages.CreatedByStudent
         });
 
         await requestRepo.AddAsync(request);
         await _unitOfWork.CompleteAsync();
+
+        var formRepo = _unitOfWork.Repository<FormDefinition>();
+        request.FormDefinition = await formRepo.GetByIdAsync(request.FormDefinitionId!.Value);
 
         return Result.Success(MapToDto(request, student, advisor, null));
     }
@@ -119,6 +121,7 @@ public class UniversityRequestService : IUniversityRequestService
         var requests = await requestRepo.FindAllAsync(
             r => r.StudentId == studentId,
             q => q.Include(r => r.Student).ThenInclude(u => u.Student)
+                  .Include(r => r.FormDefinition)
                   .Include(r => r.Advisor)
                   .Include(r => r.Staff)
                   .Include(r => r.HistoryLogs).ThenInclude(l => l.ActionBy),
@@ -135,6 +138,7 @@ public class UniversityRequestService : IUniversityRequestService
         var requests = await requestRepo.FindAllAsync(
             r => !status.HasValue || r.Status == status.Value,
             q => q.Include(r => r.Student).ThenInclude(u => u.Student)
+                  .Include(r => r.FormDefinition)
                   .Include(r => r.Advisor)
                   .Include(r => r.Staff)
                   .Include(r => r.HistoryLogs).ThenInclude(l => l.ActionBy),
@@ -152,6 +156,7 @@ public class UniversityRequestService : IUniversityRequestService
             r => (r.AdvisorId == advisorId || (r.Student.Student != null && r.Student.Student.AcademicAdvisorId == advisorId))
                  && (!status.HasValue || r.Status == status.Value),
             q => q.Include(r => r.Student).ThenInclude(u => u.Student)
+                  .Include(r => r.FormDefinition)
                   .Include(r => r.Advisor)
                   .Include(r => r.Staff)
                   .Include(r => r.HistoryLogs).ThenInclude(l => l.ActionBy),
@@ -168,6 +173,7 @@ public class UniversityRequestService : IUniversityRequestService
         var request = await requestRepo.FindOneAsync(
             r => r.Id == requestId,
             q => q.Include(r => r.Student).ThenInclude(u => u.Student)
+                  .Include(r => r.FormDefinition)
                   .Include(r => r.Advisor)
                   .Include(r => r.Staff)
                   .Include(r => r.HistoryLogs).ThenInclude(l => l.ActionBy)

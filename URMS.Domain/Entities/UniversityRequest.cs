@@ -12,6 +12,10 @@ public class UniversityRequest : AuditableEntity
     public RequestType Type { get; set; }
     public RequestStatus Status { get; set; } = RequestStatus.Pending;
 
+    // ─── Dynamic Form Definition Link ───
+    public int? FormDefinitionId { get; set; }
+    public FormDefinition? FormDefinition { get; set; }
+
     // ─── Student Info (Optional depending on request type) ───
     public decimal? GPA { get; set; }
     public int? RequestedHours { get; set; }

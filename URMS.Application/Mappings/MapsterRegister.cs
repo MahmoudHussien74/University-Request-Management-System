@@ -14,7 +14,8 @@ public class MapsterRegister : IRegister
             .Map(dest => dest.StudentNameAr, src => src.Student.FullNameAr)
             .Map(dest => dest.StudentNameEn, src => src.Student.FullNameEn)
             .Map(dest => dest.UniversityCode, src => src.Student.Student != null ? src.Student.Student.UniversityCode : null)
-            .Map(dest => dest.RequestType, src => src.Type.ToString())
+            .Map(dest => dest.FormTitleAr, src => src.FormDefinition != null ? src.FormDefinition.TitleAr : null)
+            .Map(dest => dest.FormTitleEn, src => src.FormDefinition != null ? src.FormDefinition.TitleEn : null)
             .Map(dest => dest.Status, src => src.Status.ToString())
             .Map(dest => dest.AdvisorName, src => src.Advisor != null ? src.Advisor.FullNameAr : null)
             .Map(dest => dest.StaffName, src => src.Staff != null ? src.Staff.FullNameAr : null);

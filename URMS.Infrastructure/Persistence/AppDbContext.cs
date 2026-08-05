@@ -18,6 +18,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<AdvisorStudentAssignment> AdvisorStudentAssignments => Set<AdvisorStudentAssignment>();
     public DbSet<AvailabilityChangeRequest> AvailabilityChangeRequests => Set<AvailabilityChangeRequest>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<FormDefinition> FormDefinitions => Set<FormDefinition>();
+    public DbSet<FormFieldDefinition> FormFieldDefinitions => Set<FormFieldDefinition>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
