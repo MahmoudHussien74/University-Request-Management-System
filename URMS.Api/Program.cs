@@ -27,7 +27,12 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("DefaultPolicy", policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "http://localhost:5174")
+        policy.WithOrigins(
+                  "http://localhost:3000",
+                  "http://localhost:5174",
+                  "https://urms-lake.vercel.app",
+                  "http://urms-lake.vercel.app"
+              )
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
