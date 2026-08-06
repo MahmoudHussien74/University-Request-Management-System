@@ -155,6 +155,85 @@ public class FormDefinitionService : IFormDefinitionService
         return Result.Success(true);
     }
 
+    public async Task<Result<FormFieldResponseDto>> AddFieldToFormAsync(int formId, CreateFormFieldDto dto)
+    {
+        var formRepo = _unitOfWork.Repository<FormDefinition>();
+
+        var form = await formRepo.FindOneAsync(
+            f => f.Id == formId && !f.IsDeleted,
+            q => q.Include(f => f.Fields)
+        );
+
+        if (form is null)
+            return Result.Failure<FormFieldResponseDto>(FormErrors.FormNotFound);
+
+        var nextOrder = dto.Order > 0 ? dto.Order : (form.Fields.Count + 1);
+
+        var newField = new FormFieldDefinition
+        {
+            FormDefinitionId = form.Id,
+            FieldKey = GenerateFieldKey(dto.LabelEn),
+            LabelAr = dto.LabelAr,
+            LabelEn = dto.LabelEn,
+            Placeholder = dto.Placeholder,
+            Type = dto.Type,
+            IsRequired = dto.IsRequired,
+            Order = nextOrder,
+            OptionsJson = dto.Options != null && dto.Options.Count > 0 ? JsonSerializer.Serialize(dto.Options) : null
+        };
+
+        var fieldRepo = _unitOfWork.Repository<FormFieldDefinition>();
+        await fieldRepo.AddAsync(newField);
+        await _unitOfWork.CompleteAsync();
+
+        List<string>? options = null;
+        if (!string.IsNullOrEmpty(newField.OptionsJson))
+        {
+            try
+            {
+                options = JsonSerializer.Deserialize<List<string>>(newField.OptionsJson);
+            }
+            catch { }
+        }
+
+        var responseDto = new FormFieldResponseDto(
+            newField.Id,
+            newField.FieldKey,
+            newField.LabelAr,
+            newField.LabelEn,
+            newField.Placeholder,
+            newField.Type.ToString(),
+            newField.IsRequired,
+            newField.Order,
+            options
+        );
+
+        return Result.Success(responseDto);
+    }
+
+    public async Task<Result<bool>> DeleteFormFieldAsync(int formId, int fieldId)
+    {
+        var formRepo = _unitOfWork.Repository<FormDefinition>();
+        var form = await formRepo.FindOneAsync(
+            f => f.Id == formId && !f.IsDeleted,
+            q => q.Include(f => f.Fields)
+        );
+
+        if (form is null)
+            return Result.Failure<bool>(FormErrors.FormNotFound);
+
+        var field = form.Fields.FirstOrDefault(f => f.Id == fieldId);
+        if (field is null)
+            return Result.Failure<bool>(FormErrors.FieldNotFound);
+
+        var fieldRepo = _unitOfWork.Repository<FormFieldDefinition>();
+        fieldRepo.Delete(field);
+        await _unitOfWork.CompleteAsync();
+
+        return Result.Success(true);
+    }
+
+
     public async Task<Result<FormDefinitionResponseDto>> GetFormByIdAsync(int id)
     {
         var formRepo = _unitOfWork.Repository<FormDefinition>();

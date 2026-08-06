@@ -29,6 +29,9 @@ public static class FormErrors
     public static readonly Error FormClosed =
         new("Form.Closed", "Form submission is currently closed by administration.", 400);
 
+    public static readonly Error FieldNotFound =
+        new("Form.FieldNotFound", "Form field not found.", 404);
+
     public static Error RequiredFieldMissing(string labelAr) =>
         new("Form.RequiredFieldMissing", $"الحقل الإجباري [{labelAr}] غير موجود أو فارغ.", 400);
 

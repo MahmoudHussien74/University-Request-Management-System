@@ -81,4 +81,24 @@ public class AdminFormsController : ControllerBase
         var result = await _formService.DeleteFormAsync(id);
         return result.IsSuccess ? NoContent() : result.ToProblem();
     }
+
+    /// <summary>
+    /// Super Admin: Add a new field to an existing form.
+    /// </summary>
+    [HttpPost("{formId:int}/fields")]
+    public async Task<IActionResult> AddFieldToForm(int formId, [FromBody] CreateFormFieldDto dto)
+    {
+        var result = await _formService.AddFieldToFormAsync(formId, dto);
+        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+    }
+
+    /// <summary>
+    /// Super Admin: Delete a specific field from a form by field ID.
+    /// </summary>
+    [HttpDelete("{formId:int}/fields/{fieldId:int}")]
+    public async Task<IActionResult> DeleteFormField(int formId, int fieldId)
+    {
+        var result = await _formService.DeleteFormFieldAsync(formId, fieldId);
+        return result.IsSuccess ? NoContent() : result.ToProblem();
+    }
 }

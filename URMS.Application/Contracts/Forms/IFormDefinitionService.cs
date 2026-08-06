@@ -9,6 +9,8 @@ public interface IFormDefinitionService
     Task<Result<FormDefinitionResponseDto>> UpdateFormAsync(int id, UpdateFormDefinitionDto dto, string updatedBy);
     Task<Result<FormDefinitionResponseDto>> ToggleFormStatusAsync(int id, ToggleFormStatusDto dto);
     Task<Result<bool>> DeleteFormAsync(int id);
+    Task<Result<FormFieldResponseDto>> AddFieldToFormAsync(int formId, CreateFormFieldDto dto);
+    Task<Result<bool>> DeleteFormFieldAsync(int formId, int fieldId);
     Task<Result<FormDefinitionResponseDto>> GetFormByIdAsync(int id);
     Task<Result<List<FormDefinitionResponseDto>>> GetAllAdminFormsAsync();
     Task<Result<List<FormDefinitionResponseDto>>> GetActiveStudentFormsAsync();
