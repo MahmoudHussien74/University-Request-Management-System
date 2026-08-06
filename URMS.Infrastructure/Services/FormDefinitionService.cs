@@ -294,9 +294,15 @@ public class FormDefinitionService : IFormDefinitionService
         if (!form.IsActive || (form.StartDate.HasValue && form.StartDate.Value > now) || (form.EndDate.HasValue && form.EndDate.Value < now))
             return Result.Failure<bool>(FormErrors.FormClosed);
 
+        // Convert dictionary to case-insensitive comparison
+        var answersDict = answers != null
+            ? new Dictionary<string, string>(answers, StringComparer.OrdinalIgnoreCase)
+            : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
         foreach (var field in form.Fields)
         {
-            var hasValue = answers != null && answers.TryGetValue(field.FieldKey, out var val) && !string.IsNullOrWhiteSpace(val);
+            var hasValue = (answersDict.TryGetValue(field.FieldKey, out var val1) && !string.IsNullOrWhiteSpace(val1))
+                        || (answersDict.TryGetValue(field.Id.ToString(), out var val2) && !string.IsNullOrWhiteSpace(val2));
 
             if (field.IsRequired && !hasValue)
             {
