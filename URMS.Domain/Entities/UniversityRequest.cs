@@ -24,11 +24,18 @@ public class UniversityRequest : AuditableEntity
     public ApplicationUser? Advisor { get; set; }
     public DateTime? AdvisorReviewedAt { get; set; }
 
-    // ─── Staff Confirmation ───
-    public string? StaffId { get; set; }
-    public ApplicationUser? Staff { get; set; }
-    public DateTime? StaffConfirmedAt { get; set; }
+    // ─── Administration / Staff Confirmation ───
+    public string? AdministrationId { get; set; }
+    public ApplicationUser? Administration { get; set; }
+    public DateTime? AdministrationConfirmedAt { get; set; }
     public string? ConfirmationToken { get; set; }     // Token sent via email link
+    public string? ExternalAdministrationEmail { get; set; }
+    public DateTime? ExternalAdministrationSentAt { get; set; }
+    public string? ExternalAdministrationOtpCodeHash { get; set; }
+    public DateTime? ExternalAdministrationOtpSentAt { get; set; }
+    public DateTime? ExternalAdministrationOtpExpiresAt { get; set; }
+    public DateTime? ExternalAdministrationRespondedAt { get; set; }
+    public string? ExternalAdministrationResponseNotes { get; set; }
 
     // ─── Payment (for Extra Hours or paid services) ───
     public bool? IsPaymentCompleted { get; set; }

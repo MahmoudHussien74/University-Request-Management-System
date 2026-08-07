@@ -10,6 +10,9 @@ public class UniversityRequestConfiguration : IEntityTypeConfiguration<Universit
     {
         builder.Property(r => r.RejectionReason).HasMaxLength(1000);
         builder.Property(r => r.ConfirmationToken).HasMaxLength(256);
+        builder.Property(r => r.ExternalAdministrationEmail).HasMaxLength(256);
+        builder.Property(r => r.ExternalAdministrationOtpCodeHash).HasMaxLength(256);
+        builder.Property(r => r.ExternalAdministrationResponseNotes).HasColumnType("nvarchar(max)");
         builder.Property(r => r.AdditionalDataJson).HasColumnType("nvarchar(max)");
 
         builder.HasOne(r => r.Student)
@@ -22,9 +25,9 @@ public class UniversityRequestConfiguration : IEntityTypeConfiguration<Universit
             .HasForeignKey(r => r.AdvisorId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne(r => r.Staff)
+        builder.HasOne(r => r.Administration)
             .WithMany()
-            .HasForeignKey(r => r.StaffId)
+            .HasForeignKey(r => r.AdministrationId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(r => r.FormDefinition)

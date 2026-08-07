@@ -8,37 +8,22 @@ public enum RequestStatus
     Pending = 0,
 
     /// <summary>
-    /// المرشد الأكاديمي يراجع الطلب ويؤكد صحة المعدل
+    /// الطلب وافق عليه المرشد الأكاديمي (لم يُرسَل بعد للإدارة)
     /// </summary>
-    UnderAdvisorReview = 1,
+    AdvisorApproved = 1,
 
     /// <summary>
-    /// المرشد الأكاديمي وافق وأكد صحة المعدل
+    /// الطلب أُرسِل إلى شؤون الطلاب / إدارة الجامعة في انتظار ردهم
     /// </summary>
-    AdvisorApproved = 2,
+    SentToAdministration = 2,
 
     /// <summary>
-    /// تم إرسال إيميل لمسؤول شؤون الطلاب مع رابط التأكيد
+    /// الطلب تم تنفيذه بنجاح
     /// </summary>
-    SentToStaff = 3,
-
-    /// <summary>
-    /// مسؤول شؤون الطلاب أكد عبر رابط الإيميل
-    /// </summary>
-    StaffConfirmed = 4,
-
-    /// <summary>
-    /// في انتظار سداد الرسوم (للساعات الإضافية فقط)
-    /// </summary>
-    PendingPayment = 5,
-
-    /// <summary>
-    /// تم تنفيذ الطلب بنجاح
-    /// </summary>
-    Completed = 6,
+    Completed = 3,
 
     /// <summary>
     /// الطلب مرفوض
     /// </summary>
-    Rejected = 7
+    Rejected = 4
 }

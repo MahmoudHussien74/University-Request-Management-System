@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using URMS.Application.Contracts.Identity;
 using URMS.Domain.Entities;
@@ -13,6 +14,7 @@ using URMS.Domain.Settings;
 using URMS.Infrastructure.Identity;
 using URMS.Infrastructure.PermissionAuthorization;
 using URMS.Infrastructure.Persistence;
+using URMS.Infrastructure.Services;
 
 namespace URMS.Infrastructure;
 
@@ -41,6 +43,8 @@ public static class DependencyInjection
         })
         .AddEntityFrameworkStores<AppDbContext>()
         .AddDefaultTokenProviders();
+
+        services.Configure<EmailSettings>(configuration.GetSection(EmailSettings.SectionName));
 
         // ─── 3. JWT & Cookie Dual Authentication ───
         var jwtSettings = configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>()
@@ -110,6 +114,7 @@ public static class DependencyInjection
         services.AddScoped<IRolePermissionService, RolePermissionService>();
         services.AddScoped<IUserManagementService, UserManagementService>();
         services.AddScoped<IAdvisorAssignmentService, AdvisorAssignmentService>();
+        services.AddScoped<IEmailService, EmailService>();
         services.AddScoped<URMS.Application.Contracts.Requests.IUniversityRequestService, URMS.Infrastructure.Services.UniversityRequestService>();
         services.AddScoped<URMS.Application.Contracts.Forms.IFormDefinitionService, URMS.Infrastructure.Services.FormDefinitionService>();
 

@@ -8,8 +8,17 @@ public static class RequestErrors
     public static readonly Error InvalidStatusForAdvisorReview =
         new("Request.InvalidStatusForReview", "Cannot review request in its current status.", 409);
 
-    public static readonly Error InvalidStatusForStaffConfirm =
-        new("Request.InvalidStatusForStaff", "Cannot process staff confirmation for request in its current status.", 409);
+    public static readonly Error InvalidStatusForSendEmail =
+        new("Request.InvalidStatusForSendEmail", "Cannot send email for request in its current status.", 409);
+
+    public static readonly Error InvalidStatusForAdministrationConfirm =
+        new("Request.InvalidForAdministrationConfirm", "Cannot process administration confirmation for request in its current status.", 409);
+
+    public static readonly Error InvalidExternalAdministrationOtp =
+        new("Request.InvalidExternalAdministrationOtp", "The verification code is invalid or has expired.", 401);
+
+    public static readonly Error InvalidStatusForWithdraw =
+        new("Request.InvalidStatusForWithdraw", "Cannot withdraw request in its current status.", 409);
 
     public static readonly Error StudentNotFound =
         new("Student.NotFound", "Student not found.", 404);

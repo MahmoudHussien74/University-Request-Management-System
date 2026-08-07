@@ -17,7 +17,7 @@ public static class Permissions
         public const string ViewOwn = "Permissions.Requests.ViewOwn";
         public const string Create = "Permissions.Requests.Create";
         public const string ApproveAdvisor = "Permissions.Requests.ApproveAdvisor";
-        public const string ConfirmStaff = "Permissions.Requests.ConfirmStaff";
+        public const string ConfirmAdministration = "Permissions.Requests.ConfirmAdministration";
         public const string ProcessPayment = "Permissions.Requests.ProcessPayment";
         public const string Reject = "Permissions.Requests.Reject";
     }

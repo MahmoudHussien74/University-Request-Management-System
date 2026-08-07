@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using URMS.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using URMS.Infrastructure.Persistence;
 namespace URMS.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260806234716_AddExternalStaffRequestFields")]
+    partial class AddExternalStaffRequestFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -721,16 +724,6 @@ namespace URMS.Infrastructure.Migrations
                     b.Property<string>("ExternalStaffEmail")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
-
-                    b.Property<string>("ExternalStaffOtpCodeHash")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<DateTime?>("ExternalStaffOtpExpiresAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("ExternalStaffOtpSentAt")
-                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("ExternalStaffRespondedAt")
                         .HasColumnType("datetime2");

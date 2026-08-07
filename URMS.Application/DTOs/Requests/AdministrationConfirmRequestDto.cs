@@ -1,6 +1,6 @@
 namespace URMS.Application.DTOs.Requests;
 
-public record StaffConfirmRequestDto(
+public record AdministrationConfirmRequestDto(
     bool IsApproved,
     string? ConfirmationNotes
 );

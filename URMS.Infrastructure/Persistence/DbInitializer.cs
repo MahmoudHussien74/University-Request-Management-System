@@ -197,7 +197,7 @@ public static class DbInitializer
                 Permissions.Users.View,
                 Permissions.Users.ApproveRegistration,
                 Permissions.Requests.View,
-                Permissions.Requests.ConfirmStaff,
+                Permissions.Requests.ConfirmAdministration,
                 Permissions.Requests.ProcessPayment,
                 Permissions.Advisors.ImportExcel,
                 Permissions.Advisors.ApproveAvailabilityChange

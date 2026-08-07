@@ -24,18 +24,7 @@ public class RequestsController : ControllerBase
     }
 
     /// <summary>
-    /// Get all available university request types with IDs and Arabic names for frontend dropdowns.
-    /// </summary>
-    [HttpGet("types")]
-    [AllowAnonymous]
-    public IActionResult GetRequestTypes()
-    {
-        var types = _requestService.GetRequestTypes();
-        return Ok(types);
-    }
-
-    /// <summary>
-    /// Get all request statuses with IDs, enum names, and Arabic descriptions.
+    /// Get all request statuses with IDs, enum names, and translated descriptions.
     /// </summary>
     [HttpGet("statuses")]
     [AllowAnonymous]
@@ -132,17 +121,75 @@ public class RequestsController : ControllerBase
     }
 
     /// <summary>
-    /// College Secretary / Staff confirms request & finalizes completion/payment.
+    /// Academic Advisor sends the request to student affairs by email.
     /// </summary>
-    [HttpPost("{id:int}/staff-confirm")]
-    [HasPermission(Permissions.Requests.ConfirmStaff)]
-    public async Task<IActionResult> StaffConfirm(int id, [FromBody] StaffConfirmRequestDto dto)
+    [HttpPost("{id:int}/send-to-administration")]
+    [HasPermission(Permissions.Requests.ApproveAdvisor)]
+    public async Task<IActionResult> SendToAdministration(int id, [FromBody] SendRequestToAdministrationDto dto)
     {
-        var staffId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(staffId))
+        var advisorId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(advisorId))
             return Unauthorized();
 
-        var result = await _requestService.ConfirmByStaffAsync(id, staffId, dto);
+        var result = await _requestService.SendRequestToAdministrationAsync(id, dto, advisorId);
+
+        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+    }
+
+    /// <summary>
+    /// <summary>
+    /// Public endpoint for external administration to view the request by token.
+    /// </summary>
+    [HttpGet("external/{token}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetExternalRequest(string token)
+    {
+        var result = await _requestService.GetRequestByTokenAsync(token);
+
+        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+    }
+
+    /// <summary>
+    /// Public endpoint for external administration to approve or reject via token.
+    /// </summary>
+    [HttpPost("external/{token}/respond")]
+    [AllowAnonymous]
+    public async Task<IActionResult> RespondExternalRequest(string token, [FromBody] ExternalAdministrationResponseDto dto)
+    {
+        var result = await _requestService.RespondExternalRequestAsync(token, dto);
+
+        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+    }
+
+    /// <summary>
+    /// College Secretary confirms request and finalizes completion.
+    /// </summary>
+    [HttpPost("{id:int}/secretary-confirm")]
+    [Authorize(Roles = AppRoles.CollegeSecretary)]
+    [HasPermission(Permissions.Requests.ConfirmAdministration)]
+    public async Task<IActionResult> SecretaryConfirm(int id, [FromBody] AdministrationConfirmRequestDto dto)
+    {
+        var secretaryId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(secretaryId))
+            return Unauthorized();
+
+        var result = await _requestService.ConfirmByAdministrationAsync(id, secretaryId, dto);
+
+        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+    }
+
+    /// <summary>
+    /// Student withdraws their own request while it is still pending.
+    /// </summary>
+    [HttpPost("{id:int}/withdraw")]
+    [HasPermission(Permissions.Requests.ViewOwn)]
+    public async Task<IActionResult> WithdrawRequest(int id)
+    {
+        var studentId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(studentId))
+            return Unauthorized();
+
+        var result = await _requestService.WithdrawRequestAsync(id, studentId);
 
         return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }

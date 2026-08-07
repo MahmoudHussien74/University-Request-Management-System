@@ -18,8 +18,12 @@ public class MapsterRegister : IRegister
             .Map(dest => dest.FormTitleEn, src => src.FormDefinition != null ? src.FormDefinition.TitleEn : null)
             .Map(dest => dest.Status, src => src.Status.ToString())
             .Map(dest => dest.AdvisorName, src => src.Advisor != null ? src.Advisor.FullNameAr : null)
-            .Map(dest => dest.StaffName, src => src.Staff != null ? src.Staff.FullNameAr : null);
-
+            .Map(dest => dest.ExternalAdministrationEmail, src => src.ExternalAdministrationEmail)
+            .Map(dest => dest.IsExternalAdministrationNotificationSent, src => !string.IsNullOrWhiteSpace(src.ExternalAdministrationEmail) && !string.IsNullOrWhiteSpace(src.ConfirmationToken) && src.ExternalAdministrationSentAt.HasValue)
+            .Map(dest => dest.ExternalAdministrationSentAt, src => src.ExternalAdministrationSentAt)
+            .Map(dest => dest.ExternalAdministrationOtpExpiresAt, src => src.ExternalAdministrationOtpExpiresAt)
+            .Map(dest => dest.ExternalAdministrationRespondedAt, src => src.ExternalAdministrationRespondedAt)
+            .Map(dest => dest.ExternalAdministrationResponseNotes, src => src.ExternalAdministrationResponseNotes);
         // ApplicationUser -> PendingStudentDto mapping
         config.NewConfig<ApplicationUser, PendingStudentDto>()
             .Map(dest => dest.Id, src => src.Id)
