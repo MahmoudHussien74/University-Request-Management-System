@@ -14,5 +14,6 @@ public interface IFormDefinitionService
     Task<Result<FormDefinitionResponseDto>> GetFormByIdAsync(int id);
     Task<Result<List<FormDefinitionResponseDto>>> GetAllAdminFormsAsync();
     Task<Result<List<FormDefinitionResponseDto>>> GetActiveStudentFormsAsync();
+    Task<Result<List<FormSummaryDto>>> GetLandingPageFormsAsync();
     Task<Result<bool>> ValidateSubmissionAnswersAsync(int formDefinitionId, Dictionary<string, string>? answers);
 }

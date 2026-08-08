@@ -161,31 +161,17 @@ public class UserManagementService : IUserManagementService
         }
 
         // ─── Split full names into parts (First, Second, Third, Last) ───
-        var arParts = request.FullNameAr.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        user.FirstNameAr = arParts[0];
-        user.SecondNameAr = arParts.Length > 2 ? arParts[1] : null;
-        user.ThirdNameAr = arParts.Length > 3 ? arParts[2] : null;
-        user.LastNameAr = arParts.Length switch
-        {
-            1 => arParts[0],
-            2 => arParts[1],
-            3 => arParts[2],
-            _ => string.Join(" ", arParts[3..])  // Join remaining parts as last name
-        };
-        if (arParts.Length > 3) user.ThirdNameAr = arParts[2];
+        var (firstAr, secondAr, thirdAr, lastAr) = SplitFullName(request.FullNameAr);
+        user.FirstNameAr = firstAr;
+        user.SecondNameAr = secondAr;
+        user.ThirdNameAr = thirdAr;
+        user.LastNameAr = lastAr;
 
-        var enParts = request.FullNameEn.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        user.FirstNameEn = enParts[0];
-        user.SecondNameEn = enParts.Length > 2 ? enParts[1] : null;
-        user.ThirdNameEn = enParts.Length > 3 ? enParts[2] : null;
-        user.LastNameEn = enParts.Length switch
-        {
-            1 => enParts[0],
-            2 => enParts[1],
-            3 => enParts[2],
-            _ => string.Join(" ", enParts[3..])
-        };
-        if (enParts.Length > 3) user.ThirdNameEn = enParts[2];
+        var (firstEn, secondEn, thirdEn, lastEn) = SplitFullName(request.FullNameEn);
+        user.FirstNameEn = firstEn;
+        user.SecondNameEn = secondEn;
+        user.ThirdNameEn = thirdEn;
+        user.LastNameEn = lastEn;
         user.Email = request.Email;
         user.UserName = request.Email;
         user.NormalizedEmail = request.Email.ToUpperInvariant();
@@ -204,6 +190,24 @@ public class UserManagementService : IUserManagementService
         await _userManager.UpdateAsync(user);
 
         return Result.Success();
+    }
+
+    private static (string First, string? Second, string? Third, string Last) SplitFullName(string? fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName))
+            return (string.Empty, null, null, string.Empty);
+
+        var parts = fullName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+        return parts.Length switch
+        {
+            0 => (string.Empty, null, null, string.Empty),
+            1 => (parts[0], null, null, parts[0]),
+            2 => (parts[0], null, null, parts[1]),
+            3 => (parts[0], parts[1], null, parts[2]),
+            4 => (parts[0], parts[1], parts[2], parts[3]),
+            _ => (parts[0], parts[1], parts[2], string.Join(" ", parts[3..]))
+        };
     }
 }
 

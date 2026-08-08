@@ -10,15 +10,14 @@ public static class ResultExtensions
         if (result.IsSuccess)
             throw new InvalidOperationException("Cannot convert a successful result to a problem.");
 
-        var problem = Results.Problem(statusCode: result.Error.StatusCode);
-
-        var problemDetails = problem.GetType().GetProperty(nameof(ProblemDetails))!.GetValue(problem) as ProblemDetails;
-
-        problemDetails!.Extensions = new Dictionary<string, object?>
+        var problemDetails = new ProblemDetails
         {
+            Status = result.Error.StatusCode,
+            Title = result.Error.Code,
+            Detail = result.Error.Message,
+            Extensions =
             {
-                "errors",
-                new[]
+                ["errors"] = new[]
                 {
                     new
                     {
@@ -29,6 +28,9 @@ public static class ResultExtensions
             }
         };
 
-        return new ObjectResult(problemDetails);
+        return new ObjectResult(problemDetails)
+        {
+            StatusCode = result.Error.StatusCode
+        };
     }
 }

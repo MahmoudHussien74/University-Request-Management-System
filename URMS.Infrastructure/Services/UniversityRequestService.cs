@@ -230,7 +230,7 @@ public class UniversityRequestService : IUniversityRequestService
         var request = await requestRepo.FindOneAsync(
             r => r.Id == requestId,
             q => q.Include(r => r.Student).ThenInclude(u => u.Student)
-                  .Include(r => r.FormDefinition).ThenInclude(f => f.Fields)
+                  .Include(r => r.FormDefinition!).ThenInclude(f => f.Fields)
                   .Include(r => r.Advisor)
                   .Include(r => r.HistoryLogs).ThenInclude(l => l.ActionBy)
         );
@@ -253,10 +253,11 @@ public class UniversityRequestService : IUniversityRequestService
 
         var otpCode = GenerateOtpCode();
         var now = DateTime.UtcNow;
+        var confirmationToken = Guid.NewGuid().ToString("N");
         request.ExternalAdministrationOtpSentAt = now;
         request.ExternalAdministrationOtpExpiresAt = now.AddMinutes(_emailSettings.ExternalAdministrationOtpTtlMinutes);
-        request.ExternalAdministrationOtpCodeHash = HashOtp(otpCode);
-        request.ConfirmationToken = Guid.NewGuid().ToString("N");
+        request.ConfirmationToken = confirmationToken;
+        request.ExternalAdministrationOtpCodeHash = HashOtp(otpCode, confirmationToken);
         request.ExternalAdministrationResponseNotes = null;
         request.ExternalAdministrationRespondedAt = null;
 
@@ -268,8 +269,6 @@ public class UniversityRequestService : IUniversityRequestService
             ActionMessage = RequestLogMessages.SentToAdministration,
             Notes = dto.Message
         });
-
-        await _unitOfWork.CompleteAsync();
 
         Dictionary<string, string>? additionalData = null;
         if (!string.IsNullOrEmpty(request.AdditionalDataJson))
@@ -326,7 +325,16 @@ public class UniversityRequestService : IUniversityRequestService
             <p><a href='{reviewLink}'>Review & Respond to Request</a></p>
         ";
 
-        await _emailService.SendEmailAsync(dto.AdministrationEmail, subject, body);
+        try
+        {
+            await _emailService.SendEmailAsync(dto.AdministrationEmail, subject, body);
+        }
+        catch
+        {
+            return Result.Failure<UniversityRequestResponseDto>(RequestErrors.EmailSendingFailed);
+        }
+
+        await _unitOfWork.CompleteAsync();
 
         var advisor = await userRepo.GetByIdAsync(advisorId);
         return Result.Success(MapToDto(request, request.Student, advisor, null));
@@ -377,7 +385,7 @@ public class UniversityRequestService : IUniversityRequestService
         if (request.ExternalAdministrationOtpExpiresAt.Value < DateTime.UtcNow)
             return Result.Failure<UniversityRequestResponseDto>(RequestErrors.InvalidExternalAdministrationOtp);
 
-        if (!VerifyOtp(dto.Otp, request.ExternalAdministrationOtpCodeHash))
+        if (!VerifyOtp(dto.Otp, token, request.ExternalAdministrationOtpCodeHash))
             return Result.Failure<UniversityRequestResponseDto>(RequestErrors.InvalidExternalAdministrationOtp);
 
         var oldStatus = request.Status;
@@ -659,19 +667,19 @@ public class UniversityRequestService : IUniversityRequestService
         return new string(bytes.Select(b => digits[b % digits.Length]).ToArray());
     }
 
-    private static string HashOtp(string otp)
+    private static string HashOtp(string otp, string saltKey)
     {
-        using var sha256 = SHA256.Create();
+        using var hmac = new HMACSHA256(System.Text.Encoding.UTF8.GetBytes(saltKey));
         var bytes = System.Text.Encoding.UTF8.GetBytes(otp);
-        var hash = sha256.ComputeHash(bytes);
+        var hash = hmac.ComputeHash(bytes);
         return Convert.ToBase64String(hash);
     }
 
-    private static bool VerifyOtp(string otp, string hash)
+    private static bool VerifyOtp(string otp, string saltKey, string hash)
     {
-        var otpHash = HashOtp(otp);
+        var computedHash = HashOtp(otp, saltKey);
         return CryptographicOperations.FixedTimeEquals(
-            System.Text.Encoding.UTF8.GetBytes(otpHash),
+            System.Text.Encoding.UTF8.GetBytes(computedHash),
             System.Text.Encoding.UTF8.GetBytes(hash));
     }
 

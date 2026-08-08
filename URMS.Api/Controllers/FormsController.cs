@@ -1,11 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using URMS.Api.Extensions;
 using URMS.Application.Contracts.Forms;
-using URMS.Application.Contracts.Persistence;
-using URMS.Application.DTOs.Forms;
-using URMS.Domain.Entities;
 
 namespace URMS.Api.Controllers;
 
@@ -15,12 +11,10 @@ namespace URMS.Api.Controllers;
 public class FormsController : ControllerBase
 {
     private readonly IFormDefinitionService _formService;
-    private readonly IUnitOfWork _unitOfWork;
 
-    public FormsController(IFormDefinitionService formService, IUnitOfWork unitOfWork)
+    public FormsController(IFormDefinitionService formService)
     {
         _formService = formService;
-        _unitOfWork = unitOfWork;
     }
 
     /// <summary>
@@ -28,28 +22,10 @@ public class FormsController : ControllerBase
     /// </summary>
     [HttpGet("summaries")]
     [AllowAnonymous]
-    public async Task<ActionResult<List<FormSummaryDto>>> GetLandingPageForms()
+    public async Task<IActionResult> GetLandingPageForms()
     {
-        var now = DateTime.UtcNow;
-
-        var summaries = await _unitOfWork.Repository<FormDefinition>()
-            .GetQueryable()
-            .AsNoTracking()
-            .Where(f => !f.IsDeleted &&
-                        f.IsActive &&
-                        f.StartDate <= now &&
-                        f.EndDate >= now)
-            .Select(f => new FormSummaryDto(
-                f.Id,
-                f.TitleAr,
-                f.TitleEn,
-                f.Description,
-                f.StartDate,
-                f.EndDate,
-                f.Requests.Count))
-            .ToListAsync();
-
-        return Ok(summaries);
+        var result = await _formService.GetLandingPageFormsAsync();
+        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }
 
     /// <summary>

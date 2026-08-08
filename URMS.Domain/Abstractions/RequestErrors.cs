@@ -11,6 +11,9 @@ public static class RequestErrors
     public static readonly Error InvalidStatusForSendEmail =
         new("Request.InvalidStatusForSendEmail", "Cannot send email for request in its current status.", 409);
 
+    public static readonly Error EmailSendingFailed =
+        new("Email.SendFailed", "Failed to send email to administration. Please check the email address or SMTP configuration and try again.", 500);
+
     public static readonly Error InvalidStatusForAdministrationConfirm =
         new("Request.InvalidForAdministrationConfirm", "Cannot process administration confirmation for request in its current status.", 409);
 

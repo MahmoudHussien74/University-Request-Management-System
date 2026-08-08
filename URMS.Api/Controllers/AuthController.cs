@@ -147,11 +147,12 @@ public class AuthController : ControllerBase
 
     private void SetAuthCookies(string accessToken, string refreshToken, DateTime refreshTokenExpiresOn)
     {
+        var isHttps = Request.IsHttps;
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
-            SameSite = SameSiteMode.Lax,
-            Secure = false // set true in production HTTPS
+            SameSite = isHttps ? SameSiteMode.None : SameSiteMode.Lax,
+            Secure = isHttps
         };
 
         Response.Cookies.Append("accessToken", accessToken, cookieOptions);

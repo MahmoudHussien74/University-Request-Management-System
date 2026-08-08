@@ -278,6 +278,30 @@ public class FormDefinitionService : IFormDefinitionService
         return Result.Success(forms.Select(f => MapToResponseDto(f, f.Requests?.Count ?? 0)).ToList());
     }
 
+    public async Task<Result<List<FormSummaryDto>>> GetLandingPageFormsAsync()
+    {
+        var formRepo = _unitOfWork.Repository<FormDefinition>();
+        var now = DateTime.UtcNow;
+
+        var summaries = await formRepo.GetQueryable()
+            .AsNoTracking()
+            .Where(f => !f.IsDeleted &&
+                        f.IsActive &&
+                        (!f.StartDate.HasValue || f.StartDate.Value <= now) &&
+                        (!f.EndDate.HasValue || f.EndDate.Value >= now))
+            .Select(f => new FormSummaryDto(
+                f.Id,
+                f.TitleAr,
+                f.TitleEn,
+                f.Description,
+                f.StartDate,
+                f.EndDate,
+                f.Requests.Count))
+            .ToListAsync();
+
+        return Result.Success(summaries);
+    }
+
     public async Task<Result<bool>> ValidateSubmissionAnswersAsync(int formDefinitionId, Dictionary<string, string>? answers)
     {
         var formRepo = _unitOfWork.Repository<FormDefinition>();
