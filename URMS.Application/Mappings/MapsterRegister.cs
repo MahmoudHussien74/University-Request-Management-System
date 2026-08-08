@@ -35,5 +35,19 @@ public class MapsterRegister : IRegister
             .Map(dest => dest.PhoneNumber, src => src.PhoneNumber)
             .Map(dest => dest.Address, src => src.Student != null ? src.Student.Address : "")
             .Map(dest => dest.CreatedAt, src => src.CreatedAt);
+
+        // ApplicationUser -> StudentActivationDto mapping
+        config.NewConfig<ApplicationUser, StudentActivationDto>()
+            .Map(dest => dest.Id, src => src.Id)
+            .Map(dest => dest.FullNameAr, src => src.FullNameAr)
+            .Map(dest => dest.FullNameEn, src => src.FullNameEn)
+            .Map(dest => dest.Email, src => src.Email!)
+            .Map(dest => dest.UniversityCode, src => src.Student != null ? src.Student.UniversityCode : null)
+            .Map(dest => dest.NationalId, src => src.Student != null ? src.Student.NationalId : null)
+            .Map(dest => dest.PhoneNumber, src => src.PhoneNumber)
+            .Map(dest => dest.GPA, src => src.Student != null ? src.Student.GPA : null)
+            .Map(dest => dest.IsApproved, src => src.IsApproved)
+            .Map(dest => dest.IsActive, src => src.IsActive)
+            .Map(dest => dest.CreatedAt, src => src.CreatedAt);
     }
 }

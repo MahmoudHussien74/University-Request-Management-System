@@ -70,4 +70,18 @@ public class UsersController : ControllerBase
             ? Ok(new { message = "Account reactivated successfully." })
             : result.ToProblem();
     }
+
+    /// <summary>
+    /// Get all approved students with their activation status.
+    /// Used by admins to manage activate/deactivate operations.
+    /// </summary>
+    [HttpGet("students-activation")]
+    [HasPermission(Permissions.Users.Update)]
+    public async Task<IActionResult> GetStudentsForActivation()
+    {
+        var result = await _userManagementService.GetAllStudentsForActivationAsync();
+
+        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+    }
 }
+

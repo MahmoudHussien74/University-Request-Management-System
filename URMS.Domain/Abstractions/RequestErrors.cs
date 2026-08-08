@@ -65,6 +65,12 @@ public static class UserErrors
     public static readonly Error DuplicateEmail =
         new("Auth.DuplicateEmail", "User with this email already exists.", 409);
 
+    public static readonly Error DuplicateUniversityCode =
+        new("Auth.DuplicateUniversityCode", "هذا الرقم الجامعي مسجل بالفعل.", 409);
+
+    public static readonly Error DuplicateNationalId =
+        new("Auth.DuplicateNationalId", "هذا الرقم القومي مسجل بالفعل.", 409);
+
     public static readonly Error StudentAlreadyApproved =
         new("User.AlreadyApproved", "Student is already approved.", 409);
 

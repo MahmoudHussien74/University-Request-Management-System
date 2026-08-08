@@ -63,6 +63,20 @@ public class AuthService : IAuthService
         if (existingUser is not null)
             return Result.Failure<UserResponse>(UserErrors.DuplicateEmail);
 
+        var studentRepo = _unitOfWork.Repository<Student>();
+
+        var existingUniversityCode = await studentRepo.FindOneAsync(
+            s => s.UniversityCode == request.UniversityCode
+        );
+        if (existingUniversityCode is not null)
+            return Result.Failure<UserResponse>(UserErrors.DuplicateUniversityCode);
+
+        var existingNationalId = await studentRepo.FindOneAsync(
+            s => s.NationalId == request.NationalId
+        );
+        if (existingNationalId is not null)
+            return Result.Failure<UserResponse>(UserErrors.DuplicateNationalId);
+
         var user = new ApplicationUser
         {
             UserName = request.Email,

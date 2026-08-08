@@ -99,4 +99,20 @@ public class UserManagementService : IUserManagementService
 
         return Result.Success();
     }
+
+    public async Task<Result<List<StudentActivationDto>>> GetAllStudentsForActivationAsync()
+    {
+        var userRepo = _unitOfWork.Repository<ApplicationUser>();
+
+        var students = await userRepo.FindAllAsync(
+            u => u.Student != null,
+            q => q.Include(u => u.Student),
+            orderBy: q => q.OrderByDescending(u => u.CreatedAt)
+        );
+
+        var result = students.Adapt<List<StudentActivationDto>>();
+
+        return Result.Success(result);
+    }
 }
+

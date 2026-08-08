@@ -1,5 +1,15 @@
 namespace URMS.Application.DTOs.Forms;
 
+public record FormSummaryDto(
+    int Id,
+    string TitleAr,
+    string TitleEn,
+    string? Description,
+    DateTime? StartDate,
+    DateTime? EndDate,
+    int RequestsCount
+);
+
 public record CreateFormDefinitionDto(
     string TitleAr,
     string TitleEn,

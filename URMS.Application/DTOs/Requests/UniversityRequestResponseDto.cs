@@ -15,7 +15,6 @@ public record UniversityRequestResponseDto(
     string NextAction,
     string NextActionEn,
     bool CanWithdraw,
-    bool CanReview,
     bool CanConfirm,
     Dictionary<string, string>? AdditionalData,
     string? AdvisorId,

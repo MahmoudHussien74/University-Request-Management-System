@@ -609,7 +609,6 @@ public class UniversityRequestService : IUniversityRequestService
             NextAction = nextAction,
             NextActionEn = nextActionEn,
             CanWithdraw = request.Status == RequestStatus.Pending,
-            CanReview = request.Status == RequestStatus.Pending || request.Status == RequestStatus.AdvisorApproved,
             CanConfirm = request.Status == RequestStatus.SentToAdministration
         };
     }

@@ -24,4 +24,9 @@ public interface IUserManagementService
     /// Reactivate a previously deactivated account.
     /// </summary>
     Task<Result> ReactivateAccountAsync(string userId);
+
+    /// <summary>
+    /// Get all students with their activation status for admin management.
+    /// </summary>
+    Task<Result<List<StudentActivationDto>>> GetAllStudentsForActivationAsync();
 }

@@ -12,7 +12,9 @@ public class RegisterStudentRequestValidator : AbstractValidator<RegisterStudent
         RuleFor(x => x.FirstNameEn).NotEmpty().WithMessage("English First Name is required.");
         RuleFor(x => x.LastNameEn).NotEmpty().WithMessage("English Last Name is required.");
         RuleFor(x => x.UniversityCode).NotEmpty().WithMessage("الرقم الجامعي مطلوب.");
-        RuleFor(x => x.NationalId).NotEmpty().Length(14).WithMessage("الرقم القومي يجب أن يتكون من 14 رقم.");
+        RuleFor(x => x.NationalId)
+            .NotEmpty().WithMessage("الرقم القومي مطلوب.")
+            .Matches(@"^\d{14}$").WithMessage("الرقم القومي يجب أن يتكون من 14 رقم فقط.");
         RuleFor(x => x.Email).NotEmpty().EmailAddress().WithMessage("البريد الإلكتروني غير صحيح.");
         RuleFor(x => x.PhoneNumber).NotEmpty().WithMessage("رقم الهاتف مطلوب.");
         RuleFor(x => x.Address).NotEmpty().WithMessage("العنوان مطلوب.");

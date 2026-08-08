@@ -1,23 +1,19 @@
-using Microsoft.EntityFrameworkCore.Migrations;
+﻿using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace URMS.Infrastructure.Migrations
 {
+    /// <inheritdoc />
     public partial class RenameExternalStaffToExternalAdministration : Migration
     {
+        /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Drop existing FK and index for StaffId
             migrationBuilder.DropForeignKey(
                 name: "FK_UniversityRequests_AspNetUsers_StaffId",
                 table: "UniversityRequests");
 
-            migrationBuilder.DropIndex(
-                name: "IX_UniversityRequests_StaffId",
-                table: "UniversityRequests");
-
-            // Rename columns
             migrationBuilder.RenameColumn(
                 name: "StaffId",
                 table: "UniversityRequests",
@@ -26,20 +22,10 @@ namespace URMS.Infrastructure.Migrations
             migrationBuilder.RenameColumn(
                 name: "StaffConfirmedAt",
                 table: "UniversityRequests",
-                newName: "AdministrationConfirmedAt");
-
-            migrationBuilder.RenameColumn(
-                name: "ExternalStaffEmail",
-                table: "UniversityRequests",
-                newName: "ExternalAdministrationEmail");
-
-            migrationBuilder.RenameColumn(
-                name: "ExternalStaffSentAt",
-                table: "UniversityRequests",
                 newName: "ExternalAdministrationSentAt");
 
             migrationBuilder.RenameColumn(
-                name: "ExternalStaffRespondedAt",
+                name: "ExternalStaffSentAt",
                 table: "UniversityRequests",
                 newName: "ExternalAdministrationRespondedAt");
 
@@ -49,25 +35,34 @@ namespace URMS.Infrastructure.Migrations
                 newName: "ExternalAdministrationResponseNotes");
 
             migrationBuilder.RenameColumn(
-                name: "ExternalStaffOtpSentAt",
+                name: "ExternalStaffRespondedAt",
                 table: "UniversityRequests",
                 newName: "ExternalAdministrationOtpSentAt");
 
             migrationBuilder.RenameColumn(
-                name: "ExternalStaffOtpExpiresAt",
+                name: "ExternalStaffOtpSentAt",
                 table: "UniversityRequests",
                 newName: "ExternalAdministrationOtpExpiresAt");
+
+            migrationBuilder.RenameColumn(
+                name: "ExternalStaffOtpExpiresAt",
+                table: "UniversityRequests",
+                newName: "AdministrationConfirmedAt");
 
             migrationBuilder.RenameColumn(
                 name: "ExternalStaffOtpCodeHash",
                 table: "UniversityRequests",
                 newName: "ExternalAdministrationOtpCodeHash");
 
-            // Recreate index and FK for AdministrationId
-            migrationBuilder.CreateIndex(
-                name: "IX_UniversityRequests_AdministrationId",
+            migrationBuilder.RenameColumn(
+                name: "ExternalStaffEmail",
                 table: "UniversityRequests",
-                column: "AdministrationId");
+                newName: "ExternalAdministrationEmail");
+
+            migrationBuilder.RenameIndex(
+                name: "IX_UniversityRequests_StaffId",
+                table: "UniversityRequests",
+                newName: "IX_UniversityRequests_AdministrationId");
 
             migrationBuilder.AddForeignKey(
                 name: "FK_UniversityRequests_AspNetUsers_AdministrationId",
@@ -78,18 +73,48 @@ namespace URMS.Infrastructure.Migrations
                 onDelete: ReferentialAction.Restrict);
         }
 
+        /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            // Drop new FK and index
             migrationBuilder.DropForeignKey(
                 name: "FK_UniversityRequests_AspNetUsers_AdministrationId",
                 table: "UniversityRequests");
 
-            migrationBuilder.DropIndex(
-                name: "IX_UniversityRequests_AdministrationId",
-                table: "UniversityRequests");
+            migrationBuilder.RenameColumn(
+                name: "ExternalAdministrationSentAt",
+                table: "UniversityRequests",
+                newName: "StaffConfirmedAt");
 
-            // Rename columns back
+            migrationBuilder.RenameColumn(
+                name: "ExternalAdministrationResponseNotes",
+                table: "UniversityRequests",
+                newName: "ExternalStaffResponseNotes");
+
+            migrationBuilder.RenameColumn(
+                name: "ExternalAdministrationRespondedAt",
+                table: "UniversityRequests",
+                newName: "ExternalStaffSentAt");
+
+            migrationBuilder.RenameColumn(
+                name: "ExternalAdministrationOtpSentAt",
+                table: "UniversityRequests",
+                newName: "ExternalStaffRespondedAt");
+
+            migrationBuilder.RenameColumn(
+                name: "ExternalAdministrationOtpExpiresAt",
+                table: "UniversityRequests",
+                newName: "ExternalStaffOtpSentAt");
+
+            migrationBuilder.RenameColumn(
+                name: "ExternalAdministrationOtpCodeHash",
+                table: "UniversityRequests",
+                newName: "ExternalStaffOtpCodeHash");
+
+            migrationBuilder.RenameColumn(
+                name: "ExternalAdministrationEmail",
+                table: "UniversityRequests",
+                newName: "ExternalStaffEmail");
+
             migrationBuilder.RenameColumn(
                 name: "AdministrationId",
                 table: "UniversityRequests",
@@ -98,48 +123,12 @@ namespace URMS.Infrastructure.Migrations
             migrationBuilder.RenameColumn(
                 name: "AdministrationConfirmedAt",
                 table: "UniversityRequests",
-                newName: "StaffConfirmedAt");
-
-            migrationBuilder.RenameColumn(
-                name: "ExternalAdministrationEmail",
-                table: "UniversityRequests",
-                newName: "ExternalStaffEmail");
-
-            migrationBuilder.RenameColumn(
-                name: "ExternalAdministrationSentAt",
-                table: "UniversityRequests",
-                newName: "ExternalStaffSentAt");
-
-            migrationBuilder.RenameColumn(
-                name: "ExternalAdministrationRespondedAt",
-                table: "UniversityRequests",
-                newName: "ExternalStaffRespondedAt");
-
-            migrationBuilder.RenameColumn(
-                name: "ExternalAdministrationResponseNotes",
-                table: "UniversityRequests",
-                newName: "ExternalStaffResponseNotes");
-
-            migrationBuilder.RenameColumn(
-                name: "ExternalAdministrationOtpSentAt",
-                table: "UniversityRequests",
-                newName: "ExternalStaffOtpSentAt");
-
-            migrationBuilder.RenameColumn(
-                name: "ExternalAdministrationOtpExpiresAt",
-                table: "UniversityRequests",
                 newName: "ExternalStaffOtpExpiresAt");
 
-            migrationBuilder.RenameColumn(
-                name: "ExternalAdministrationOtpCodeHash",
+            migrationBuilder.RenameIndex(
+                name: "IX_UniversityRequests_AdministrationId",
                 table: "UniversityRequests",
-                newName: "ExternalStaffOtpCodeHash");
-
-            // Recreate index and FK for StaffId
-            migrationBuilder.CreateIndex(
-                name: "IX_UniversityRequests_StaffId",
-                table: "UniversityRequests",
-                column: "StaffId");
+                newName: "IX_UniversityRequests_StaffId");
 
             migrationBuilder.AddForeignKey(
                 name: "FK_UniversityRequests_AspNetUsers_StaffId",
