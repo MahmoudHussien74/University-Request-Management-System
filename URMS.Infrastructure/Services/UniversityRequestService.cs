@@ -307,8 +307,7 @@ public class UniversityRequestService : IUniversityRequestService
 
         var requestUrl = _emailSettings.ExternalAdministrationBaseUrl.TrimEnd('/');
         var token = request.ConfirmationToken!;
-        var approveLink = $"{requestUrl}/request/{token}/approve";
-        var rejectLink = $"{requestUrl}/request/{token}/reject";
+        var reviewLink = $"{requestUrl}/{token}";
 
         var studentName = request.Student.FullNameEn;
         var formTitle = request.FormDefinition?.TitleEn ?? "University Request";
@@ -323,10 +322,8 @@ public class UniversityRequestService : IUniversityRequestService
             <p><strong>Advisor Message:</strong> {System.Net.WebUtility.HtmlEncode(dto.Message ?? string.Empty)}</p>
             <p><strong>Verification Code:</strong> {otpCode}</p>
             <p>This code expires after {_emailSettings.ExternalAdministrationOtpTtlMinutes} minutes.</p>
-            <p>You may respond using one of the following links:</p>
-            <p><a href='{approveLink}'>Approve Request</a></p>
-            <p><a href='{rejectLink}'>Reject Request</a></p>
-            <p>If the interface is not displayed, please open the link in a browser that supports requests.</p>
+            <p>You may review and respond to this request using the following link:</p>
+            <p><a href='{reviewLink}'>Review & Respond to Request</a></p>
         ";
 
         await _emailService.SendEmailAsync(dto.AdministrationEmail, subject, body);
@@ -517,6 +514,9 @@ public class UniversityRequestService : IUniversityRequestService
 
         if (request is null)
             return Result.Failure<UniversityRequestResponseDto>(RequestErrors.RequestNotFound);
+
+        if (dto.TargetStatus == RequestStatus.SentToAdministration)
+            return Result.Failure<UniversityRequestResponseDto>(RequestErrors.InvalidStatusForAdminOverride);
 
         var oldStatus = request.Status;
         request.Status = dto.TargetStatus;

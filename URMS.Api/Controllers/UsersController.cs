@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using URMS.Api.Extensions;
 using URMS.Application.Contracts.Identity;
@@ -72,16 +73,32 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
-    /// Get all approved students with their activation status.
-    /// Used by admins to manage activate/deactivate operations.
+    /// Get all students with their activation status.
+    /// Admin/Secretary see all students; Advisor sees only assigned students.
     /// </summary>
     [HttpGet("students-activation")]
     [HasPermission(Permissions.Users.Update)]
     public async Task<IActionResult> GetStudentsForActivation()
     {
-        var result = await _userManagementService.GetAllStudentsForActivationAsync();
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+
+        var result = await _userManagementService.GetAllStudentsForActivationAsync(userId, roles);
 
         return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }
-}
 
+    /// <summary>
+    /// Update student profile data (admin operation).
+    /// </summary>
+    [HttpPut("{userId}")]
+    [HasPermission(Permissions.Users.Update)]
+    public async Task<IActionResult> UpdateStudent(string userId, [FromBody] UpdateStudentRequest request)
+    {
+        var result = await _userManagementService.UpdateStudentAsync(userId, request);
+
+        return result.IsSuccess
+            ? Ok(new { message = "Student data updated successfully." })
+            : result.ToProblem();
+    }
+}

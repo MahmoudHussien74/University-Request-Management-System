@@ -27,6 +27,12 @@ public interface IUserManagementService
 
     /// <summary>
     /// Get all students with their activation status for admin management.
+    /// Advisors see only their assigned students; Admin/Secretary see all.
     /// </summary>
-    Task<Result<List<StudentActivationDto>>> GetAllStudentsForActivationAsync();
+    Task<Result<List<StudentActivationDto>>> GetAllStudentsForActivationAsync(string callerUserId, IList<string> callerRoles);
+
+    /// <summary>
+    /// Update student profile data (admin operation).
+    /// </summary>
+    Task<Result> UpdateStudentAsync(string userId, UpdateStudentRequest request);
 }

@@ -20,6 +20,9 @@ public static class RequestErrors
     public static readonly Error InvalidStatusForWithdraw =
         new("Request.InvalidStatusForWithdraw", "Cannot withdraw request in its current status.", 409);
 
+    public static readonly Error InvalidStatusForAdminOverride =
+        new("Request.InvalidStatusForAdminOverride", "Cannot change status to SentToAdministration directly via admin override.", 400);
+
     public static readonly Error StudentNotFound =
         new("Student.NotFound", "Student not found.", 404);
 

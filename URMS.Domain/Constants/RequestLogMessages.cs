@@ -10,5 +10,5 @@ public static class RequestLogMessages
     public const string WithdrawnByStudent = "سحب الطلب بواسطة الطالب";
     public const string SentToAdministration = "تم إرسال الطلب إلى شؤون الطلاب/الإدارة عبر البريد الإلكتروني";
     public const string ExternalAdministrationResponded = "تم الرد من شؤون الطلاب/الإدارة عبر الرابط الخارجي";
-    public const string AdminOverride = "تعديل إداري مباشر (SuperAdmin Override)";
+    public const string AdminOverride = "تعديل إداري مباشر من أدمن النظام";
 }
