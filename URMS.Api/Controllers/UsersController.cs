@@ -27,8 +27,7 @@ public class UsersController : ControllerBase
     [HasPermission(Permissions.Users.ApproveRegistration)]
     public async Task<IActionResult> GetPendingStudents()
     {
-        var result = await _userManagementService.GetPendingStudentsAsync();
-
+        var result = await _userManagementService.GetPendingStudentsAsync(User.GetUserId(), User.GetUserRoles());
         return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }
 
@@ -80,11 +79,7 @@ public class UsersController : ControllerBase
     [HasPermission(Permissions.Users.Update)]
     public async Task<IActionResult> GetStudentsForActivation()
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
-
-        var result = await _userManagementService.GetAllStudentsForActivationAsync(userId, roles);
-
+        var result = await _userManagementService.GetAllStudentsForActivationAsync(User.GetUserId(), User.GetUserRoles());
         return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }
 

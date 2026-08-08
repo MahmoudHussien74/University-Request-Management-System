@@ -7,8 +7,9 @@ public interface IUserManagementService
 {
     /// <summary>
     /// Get all students with IsApproved = false (pending advisor review).
+    /// Advisors see only their assigned students; Admin/Secretary see all.
     /// </summary>
-    Task<Result<List<PendingStudentDto>>> GetPendingStudentsAsync();
+    Task<Result<List<PendingStudentDto>>> GetPendingStudentsAsync(string callerUserId, IList<string> callerRoles);
 
     /// <summary>
     /// Advisor approves a student account — enables login.

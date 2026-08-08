@@ -26,12 +26,14 @@ public class UserManagementService : IUserManagementService
         _rolePermissionService = rolePermissionService;
     }
 
-    public async Task<Result<List<PendingStudentDto>>> GetPendingStudentsAsync()
+    public async Task<Result<List<PendingStudentDto>>> GetPendingStudentsAsync(string callerUserId, IList<string> callerRoles)
     {
         var userRepo = _unitOfWork.Repository<ApplicationUser>();
+        var isAdvisor = callerRoles.Contains(AppRoles.AcademicAdvisor);
 
         var pendingUsers = await userRepo.FindAllAsync(
-            u => !u.IsApproved && u.IsActive && u.Student != null,
+            u => !u.IsApproved && u.IsActive && u.Student != null &&
+                 (!isAdvisor || u.Student.AcademicAdvisorId == callerUserId),
             q => q.Include(u => u.Student),
             orderBy: q => q.OrderByDescending(u => u.CreatedAt)
         );
