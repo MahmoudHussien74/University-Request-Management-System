@@ -172,6 +172,8 @@ public static class DbInitializer
             var existingClaims = await roleManager.GetClaimsAsync(advisorRole);
             var advisorPermissions = new[]
             {
+                Permissions.Users.View,
+                Permissions.Users.ApproveRegistration,
                 Permissions.Requests.View,
                 Permissions.Requests.ApproveAdvisor,
                 Permissions.Requests.Reject,
