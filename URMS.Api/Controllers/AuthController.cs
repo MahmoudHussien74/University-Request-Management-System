@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Mvc;
 using URMS.Api.Extensions;
 using URMS.Application.Contracts.Identity;
 using URMS.Application.DTOs.Auth;
+using URMS.Domain.Abstractions;
+using URMS.Domain.Constants;
 
 namespace URMS.Api.Controllers;
 
@@ -27,7 +29,7 @@ public class AuthController : ControllerBase
     {
         var result = await _authService.RegisterStudentAsync(request);
 
-        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+        return result.ToResponse(HttpContext, LocalizationKeys.UserRegisteredSuccessfully);
     }
 
     /// <summary>
@@ -40,10 +42,10 @@ public class AuthController : ControllerBase
         var result = await _authService.LoginAsync(request);
 
         if (result.IsFailure)
-            return result.ToProblem();
+            return result.ToResponse(HttpContext);
 
         SetAuthCookies(result.Value.Token, result.Value.RefreshToken, result.Value.RefreshTokenExpiresOn);
-        return Ok(result.Value);
+        return result.ToResponse(HttpContext, LocalizationKeys.LoginSuccessful);
     }
 
     /// <summary>
@@ -53,19 +55,19 @@ public class AuthController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest? request)
     {
-        var token = request?.Token ?? Request.Cookies["accessToken"];
-        var refreshToken = request?.RefreshToken ?? Request.Cookies["refreshToken"];
+        var token = request?.Token ?? Request.Cookies[AuthConstants.AccessTokenCookie];
+        var refreshToken = request?.RefreshToken ?? Request.Cookies[AuthConstants.RefreshTokenCookie];
 
         if (string.IsNullOrEmpty(refreshToken))
-            return BadRequest("Refresh token is required.");
+            return Result.Failure(UserErrors.InvalidRefreshToken).ToResponse(HttpContext);
 
         var result = await _authService.RefreshTokenAsync(token ?? string.Empty, refreshToken);
 
         if (result.IsFailure)
-            return result.ToProblem();
+            return result.ToResponse(HttpContext);
 
         SetAuthCookies(result.Value.Token, result.Value.RefreshToken, result.Value.RefreshTokenExpiresOn);
-        return Ok(result.Value);
+        return result.ToResponse(HttpContext, LocalizationKeys.LoginSuccessful);
     }
 
     /// <summary>
@@ -75,19 +77,19 @@ public class AuthController : ControllerBase
     [Authorize]
     public async Task<IActionResult> RevokeToken([FromBody] RefreshTokenRequest? request)
     {
-        var refreshToken = request?.RefreshToken ?? Request.Cookies["refreshToken"];
+        var refreshToken = request?.RefreshToken ?? Request.Cookies[AuthConstants.RefreshTokenCookie];
         if (string.IsNullOrEmpty(refreshToken))
-            return BadRequest("Refresh token is required.");
+            return Result.Failure(UserErrors.InvalidRefreshToken).ToResponse(HttpContext);
 
         var result = await _authService.RevokeTokenAsync(refreshToken);
 
         if (result.IsFailure)
-            return result.ToProblem();
+            return result.ToResponse(HttpContext);
 
-        Response.Cookies.Delete("accessToken");
-        Response.Cookies.Delete("refreshToken");
+        Response.Cookies.Delete(AuthConstants.AccessTokenCookie);
+        Response.Cookies.Delete(AuthConstants.RefreshTokenCookie);
 
-        return Ok(new { message = "Token revoked successfully." });
+        return result.ToResponse(HttpContext, LocalizationKeys.SuccessDefault);
     }
 
     /// <summary>
@@ -97,7 +99,7 @@ public class AuthController : ControllerBase
     [Authorize]
     public async Task<IActionResult> Logout()
     {
-        var refreshToken = Request.Cookies["refreshToken"];
+        var refreshToken = Request.Cookies[AuthConstants.RefreshTokenCookie];
         if (!string.IsNullOrEmpty(refreshToken))
         {
             await _authService.RevokeTokenAsync(refreshToken);
@@ -105,10 +107,10 @@ public class AuthController : ControllerBase
 
         await _authService.LogoutAsync();
 
-        Response.Cookies.Delete("accessToken");
-        Response.Cookies.Delete("refreshToken");
+        Response.Cookies.Delete(AuthConstants.AccessTokenCookie);
+        Response.Cookies.Delete(AuthConstants.RefreshTokenCookie);
 
-        return Ok(new { message = "Logged out successfully." });
+        return Result.Success().ToResponse(HttpContext, LocalizationKeys.LogoutSuccessful);
     }
 
     /// <summary>
@@ -124,9 +126,7 @@ public class AuthController : ControllerBase
 
         var result = await _authService.ChangePasswordAsync(userId, request);
 
-        return result.IsSuccess
-            ? Ok(new { message = "Password changed successfully." })
-            : result.ToProblem();
+        return result.ToResponse(HttpContext, LocalizationKeys.PasswordChangedSuccessfully);
     }
 
     /// <summary>
@@ -142,7 +142,7 @@ public class AuthController : ControllerBase
 
         var result = await _authService.GetCurrentUserAsync(userId);
 
-        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+        return result.ToResponse(HttpContext);
     }
 
     private void SetAuthCookies(string accessToken, string refreshToken, DateTime refreshTokenExpiresOn)
@@ -155,8 +155,8 @@ public class AuthController : ControllerBase
             Secure = isHttps
         };
 
-        Response.Cookies.Append("accessToken", accessToken, cookieOptions);
-        Response.Cookies.Append("refreshToken", refreshToken, cookieOptions.WithExpires(refreshTokenExpiresOn));
+        Response.Cookies.Append(AuthConstants.AccessTokenCookie, accessToken, cookieOptions);
+        Response.Cookies.Append(AuthConstants.RefreshTokenCookie, refreshToken, cookieOptions.WithExpires(refreshTokenExpiresOn));
     }
 }
 

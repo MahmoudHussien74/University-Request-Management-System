@@ -25,7 +25,7 @@ public class FormsController : ControllerBase
     public async Task<IActionResult> GetLandingPageForms()
     {
         var result = await _formService.GetLandingPageFormsAsync();
-        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+        return result.ToResponse(HttpContext);
     }
 
     /// <summary>
@@ -36,7 +36,7 @@ public class FormsController : ControllerBase
     public async Task<IActionResult> GetActiveForms()
     {
         var result = await _formService.GetActiveStudentFormsAsync();
-        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+        return result.ToResponse(HttpContext);
     }
 
     /// <summary>
@@ -47,6 +47,6 @@ public class FormsController : ControllerBase
     public async Task<IActionResult> GetFormSchema(int id)
     {
         var result = await _formService.GetFormByIdAsync(id);
-        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+        return result.ToResponse(HttpContext);
     }
 }

@@ -32,7 +32,7 @@ public class UsersController : ControllerBase
         [FromQuery] int? pageSize = null)
     {
         var result = await _userManagementService.GetPendingStudentsAsync(User.GetUserId(), User.GetUserRoles(), searchColumn, searchTerm, pageNumber, pageSize);
-        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+        return result.ToResponse(HttpContext);
     }
 
     /// <summary>
@@ -43,8 +43,7 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> ApproveStudent(string studentId)
     {
         var result = await _userManagementService.ApproveStudentAsync(studentId);
-
-        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+        return result.ToResponse(HttpContext);
     }
 
     /// <summary>
@@ -55,10 +54,7 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> DeactivateAccount(string userId)
     {
         var result = await _userManagementService.DeactivateAccountAsync(userId);
-
-        return result.IsSuccess
-            ? Ok(new { message = "Account deactivated successfully." })
-            : result.ToProblem();
+        return result.ToResponse(HttpContext);
     }
 
     /// <summary>
@@ -69,10 +65,7 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> ReactivateAccount(string userId)
     {
         var result = await _userManagementService.ReactivateAccountAsync(userId);
-
-        return result.IsSuccess
-            ? Ok(new { message = "Account reactivated successfully." })
-            : result.ToProblem();
+        return result.ToResponse(HttpContext);
     }
 
     /// <summary>
@@ -88,7 +81,7 @@ public class UsersController : ControllerBase
         [FromQuery] int? pageSize = null)
     {
         var result = await _userManagementService.GetAllStudentsForActivationAsync(User.GetUserId(), User.GetUserRoles(), searchColumn, searchTerm, pageNumber, pageSize);
-        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+        return result.ToResponse(HttpContext);
     }
 
     /// <summary>
@@ -99,10 +92,7 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> UpdateStudent(string userId, [FromBody] UpdateStudentRequest request)
     {
         var result = await _userManagementService.UpdateStudentAsync(userId, request);
-
-        return result.IsSuccess
-            ? Ok(new { message = "Student data updated successfully." })
-            : result.ToProblem();
+        return result.ToResponse(HttpContext);
     }
 
     /// <summary>
@@ -114,7 +104,7 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> CreateAdvisor([FromBody] CreateAdvisorDto dto)
     {
         var result = await _userManagementService.CreateAdvisorAsync(dto);
-        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+        return result.ToResponse(HttpContext);
     }
 
     /// <summary>
@@ -126,7 +116,7 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> BulkCreateAdvisors([FromBody] BulkCreateAdvisorsDto dto)
     {
         var result = await _userManagementService.BulkCreateAdvisorsAsync(dto);
-        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+        return result.ToResponse(HttpContext);
     }
 
     /// <summary>
@@ -142,6 +132,6 @@ public class UsersController : ControllerBase
         [FromQuery] int? pageSize = null)
     {
         var result = await _userManagementService.GetAllAdvisorsAsync(searchColumn, searchTerm, pageNumber, pageSize);
-        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+        return result.ToResponse(HttpContext);
     }
 }

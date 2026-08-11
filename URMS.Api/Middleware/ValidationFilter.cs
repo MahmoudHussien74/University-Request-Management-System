@@ -1,6 +1,8 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using URMS.Application.Common.Models;
+using URMS.Application.Contracts.Infrastructure;
 
 namespace URMS.Api.Middleware;
 
@@ -22,23 +24,25 @@ public class ValidationFilter : IAsyncActionFilter
 
                 if (!validationResult.IsValid)
                 {
+                    var localizer = context.HttpContext.RequestServices.GetService<ILocalizationService>();
+
                     var errors = validationResult.Errors
-                        .Select(e => new
-                        {
-                            Field = e.PropertyName,
-                            Message = e.ErrorMessage
-                        })
+                        .Select(e => new ApiError(e.PropertyName, localizer?.GetLocalizedString(e.ErrorMessage) ?? e.ErrorMessage))
                         .ToList();
 
-                    var problemDetails = new ProblemDetails
+                    var msg = localizer?.GetLocalizedString("ValidationFailed");
+                    if (string.IsNullOrWhiteSpace(msg) || msg == "ValidationFailed")
                     {
-                        Title = "Validation Error",
-                        Status = StatusCodes.Status400BadRequest,
-                        Detail = "One or more validation errors occurred."
-                    };
-                    problemDetails.Extensions["errors"] = errors;
+                        msg = "Validation failed for one or more fields.";
+                    }
 
-                    context.Result = new BadRequestObjectResult(problemDetails);
+                    var failureResponse = ApiResponse.Failure(
+                        message: msg,
+                        errors: errors,
+                        statusCode: StatusCodes.Status400BadRequest
+                    );
+
+                    context.Result = new BadRequestObjectResult(failureResponse);
                     return;
                 }
             }

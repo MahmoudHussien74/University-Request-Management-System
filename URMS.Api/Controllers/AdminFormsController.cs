@@ -27,7 +27,7 @@ public class AdminFormsController : ControllerBase
     public async Task<IActionResult> GetAllForms()
     {
         var result = await _formService.GetAllAdminFormsAsync();
-        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+        return result.ToResponse(HttpContext);
     }
 
     /// <summary>
@@ -37,7 +37,7 @@ public class AdminFormsController : ControllerBase
     public async Task<IActionResult> GetFormById(int id)
     {
         var result = await _formService.GetFormByIdAsync(id);
-        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+        return result.ToResponse(HttpContext);
     }
 
     /// <summary>
@@ -48,7 +48,7 @@ public class AdminFormsController : ControllerBase
     {
         var adminId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "SuperAdmin";
         var result = await _formService.CreateFormAsync(dto, adminId);
-        return result.IsSuccess ? CreatedAtAction(nameof(GetFormById), new { id = result.Value.Id }, result.Value) : result.ToProblem();
+        return result.ToResponse(HttpContext, LocalizationKeys.SuccessDefault, 201);
     }
 
     /// <summary>
@@ -59,7 +59,7 @@ public class AdminFormsController : ControllerBase
     {
         var adminId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "SuperAdmin";
         var result = await _formService.UpdateFormAsync(id, dto, adminId);
-        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+        return result.ToResponse(HttpContext);
     }
 
     /// <summary>
@@ -69,7 +69,7 @@ public class AdminFormsController : ControllerBase
     public async Task<IActionResult> ToggleFormStatus(int id, [FromBody] ToggleFormStatusDto dto)
     {
         var result = await _formService.ToggleFormStatusAsync(id, dto);
-        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+        return result.ToResponse(HttpContext);
     }
 
     /// <summary>
@@ -79,7 +79,7 @@ public class AdminFormsController : ControllerBase
     public async Task<IActionResult> DeleteForm(int id)
     {
         var result = await _formService.DeleteFormAsync(id);
-        return result.IsSuccess ? NoContent() : result.ToProblem();
+        return result.ToResponse(HttpContext);
     }
 
     /// <summary>
@@ -89,7 +89,7 @@ public class AdminFormsController : ControllerBase
     public async Task<IActionResult> AddFieldToForm(int formId, [FromBody] CreateFormFieldDto dto)
     {
         var result = await _formService.AddFieldToFormAsync(formId, dto);
-        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+        return result.ToResponse(HttpContext);
     }
 
     /// <summary>
@@ -99,6 +99,6 @@ public class AdminFormsController : ControllerBase
     public async Task<IActionResult> DeleteFormField(int formId, int fieldId)
     {
         var result = await _formService.DeleteFormFieldAsync(formId, fieldId);
-        return result.IsSuccess ? NoContent() : result.ToProblem();
+        return result.ToResponse(HttpContext);
     }
 }

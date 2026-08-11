@@ -1,0 +1,317 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Common & System Messages -->
+  <data name="SuccessDefault" xml:space="preserve">
+    <value>تمت العملية بنجاح.</value>
+  </data>
+  <data name="ValidationFailed" xml:space="preserve">
+    <value>يرجى مراجعة البيانات المدخلة والتأكد من صحتها.</value>
+  </data>
+  <data name="InternalServerError" xml:space="preserve">
+    <value>حدث خطأ فني غير متوقع. يرجى المحاولة لاحقاً.</value>
+  </data>
+  <data name="UnauthorizedAccess" xml:space="preserve">
+    <value>عفواً، يجب تسجيل الدخول للوصول إلى هذه الصفحة.</value>
+  </data>
+  <data name="ForbiddenAccess" xml:space="preserve">
+    <value>عفواً، ليس لديك صلاحية لتنفيذ هذا الإجراء.</value>
+  </data>
+
+  <!-- Auth & Account Success -->
+  <data name="UserRegisteredSuccessfully" xml:space="preserve">
+    <value>تم إنشاء حساب الطالب بنجاح، وفي انتظار موافقة المرشد الأكاديمي.</value>
+  </data>
+  <data name="LoginSuccessful" xml:space="preserve">
+    <value>تم تسجيل الدخول بنجاح.</value>
+  </data>
+  <data name="LogoutSuccessful" xml:space="preserve">
+    <value>تم تسجيل الخروج بنجاح.</value>
+  </data>
+  <data name="PasswordChangedSuccessfully" xml:space="preserve">
+    <value>تم تغيير كلمة المرور بنجاح.</value>
+  </data>
+  <data name="StudentApprovedSuccessfully" xml:space="preserve">
+    <value>تمت الموافقة على حساب الطالب وتفعيله بنجاح.</value>
+  </data>
+  <data name="AccountDeactivatedSuccessfully" xml:space="preserve">
+    <value>تم تعطيل الحساب بنجاح.</value>
+  </data>
+  <data name="AccountReactivatedSuccessfully" xml:space="preserve">
+    <value>تم إعادة تفعيل الحساب بنجاح.</value>
+  </data>
+  <data name="AdvisorCreatedSuccessfully" xml:space="preserve">
+    <value>تم إنشاء حساب المرشد الأكاديمي بنجاح.</value>
+  </data>
+  <data name="BulkAdvisorsCreatedSuccessfully" xml:space="preserve">
+    <value>تمت إضافة حسابات المرشدين الأكاديميين بنجاح.</value>
+  </data>
+  <data name="StudentsAssignedSuccessfully" xml:space="preserve">
+    <value>تم توزيع الطلاب على المرشد الأكاديمي بنجاح.</value>
+  </data>
+  <data name="AssignmentRemovedSuccessfully" xml:space="preserve">
+    <value>تم إزالة توزيع الطالب بنجاح.</value>
+  </data>
+
+  <!-- Request Operation Success -->
+  <data name="AdvisorReviewSuccess" xml:space="preserve">
+    <value>تم تسجيل مراجعة المرشد الأكاديمي على الطلب بنجاح.</value>
+  </data>
+  <data name="SentToAdministrationSuccess" xml:space="preserve">
+    <value>تم إرسال الطلب إلى إدارة الكلية بنجاح.</value>
+  </data>
+  <data name="ExternalResponseSuccess" xml:space="preserve">
+    <value>تم تسجيل رد الإدارة على الطلب بنجاح.</value>
+  </data>
+  <data name="RequestWithdrawnSuccess" xml:space="preserve">
+    <value>تم سحب الطلب بنجاح.</value>
+  </data>
+  <data name="StatusOverrideSuccess" xml:space="preserve">
+    <value>تم تحديث حالة الطلب بنجاح.</value>
+  </data>
+
+  <!-- User & Auth Errors -->
+  <data name="User.NotFound" xml:space="preserve">
+    <value>عفواً، لم يتم العثور على حساب المستخدم.</value>
+  </data>
+  <data name="UserNotFound" xml:space="preserve">
+    <value>عفواً، لم يتم العثور على حساب المستخدم.</value>
+  </data>
+  <data name="UserNotFoundMessage" xml:space="preserve">
+    <value>عفواً، لم يتم العثور على حساب المستخدم.</value>
+  </data>
+  <data name="Auth.InvalidCredentials" xml:space="preserve">
+    <value>البريد الإلكتروني أو كلمة المرور غير صحيحة.</value>
+  </data>
+  <data name="User.InvalidCredentials" xml:space="preserve">
+    <value>البريد الإلكتروني أو كلمة المرور غير صحيحة.</value>
+  </data>
+  <data name="InvalidCredentials" xml:space="preserve">
+    <value>البريد الإلكتروني أو كلمة المرور غير صحيحة.</value>
+  </data>
+  <data name="InvalidCredentialsMessage" xml:space="preserve">
+    <value>البريد الإلكتروني أو كلمة المرور غير صحيحة.</value>
+  </data>
+  <data name="Auth.AccountDeactivated" xml:space="preserve">
+    <value>هذا الحساب معطل حالياً. يرجى التواصل مع إدارة الكلية.</value>
+  </data>
+  <data name="User.AccountDeactivated" xml:space="preserve">
+    <value>هذا الحساب معطل حالياً. يرجى التواصل مع إدارة الكلية.</value>
+  </data>
+  <data name="Auth.AccountNotApproved" xml:space="preserve">
+    <value>حسابك في انتظار موافقة المرشد الأكاديمي أو سكرتارية الكلية.</value>
+  </data>
+  <data name="User.PendingApproval" xml:space="preserve">
+    <value>حسابك في انتظار موافقة المرشد الأكاديمي أو سكرتارية الكلية.</value>
+  </data>
+  <data name="Auth.DuplicateEmail" xml:space="preserve">
+    <value>البريد الإلكتروني مُسجّل بالفعل في النظام.</value>
+  </data>
+  <data name="User.EmailAlreadyExists" xml:space="preserve">
+    <value>البريد الإلكتروني مُسجّل بالفعل في النظام.</value>
+  </data>
+  <data name="Auth.DuplicateUniversityCode" xml:space="preserve">
+    <value>الرقم الجامعي مُسجّل بالفعل.</value>
+  </data>
+  <data name="User.UniversityCodeAlreadyExists" xml:space="preserve">
+    <value>الرقم الجامعي مُسجّل بالفعل.</value>
+  </data>
+  <data name="Auth.DuplicateNationalId" xml:space="preserve">
+    <value>الرقم القومي مُسجّل بالفعل.</value>
+  </data>
+  <data name="User.NationalIdAlreadyExists" xml:space="preserve">
+    <value>الرقم القومي مُسجّل بالفعل.</value>
+  </data>
+  <data name="User.AlreadyApproved" xml:space="preserve">
+    <value>تمت الموافقة على هذا الطالب سابقاً.</value>
+  </data>
+  <data name="Auth.InvalidRefreshToken" xml:space="preserve">
+    <value>جلسة التسجيل غير صالحة، يرجى إعادة تسجيل الدخول.</value>
+  </data>
+  <data name="Auth.RefreshTokenInactive" xml:space="preserve">
+    <value>انتهت صلاحية الجلسة، يرجى تسجيل الدخول مجدداً.</value>
+  </data>
+  <data name="Auth.RegistrationFailed" xml:space="preserve">
+    <value>تعذر تسجيل الحساب. يرجى التأكد من البيانات المدخلة.</value>
+  </data>
+  <data name="Auth.ChangePasswordFailed" xml:space="preserve">
+    <value>تعذر تغيير كلمة المرور. يرجى التأكد من كلمة المرور الحالية.</value>
+  </data>
+  <data name="Auth.DuplicateAdvisorCode" xml:space="preserve">
+    <value>كود المرشد الأكاديمي مُسجّل بالفعل.</value>
+  </data>
+  <data name="Advisor.EmptyList" xml:space="preserve">
+    <value>قائمة المرشدين الأكاديميين فارغة.</value>
+  </data>
+
+  <!-- Request Errors -->
+  <data name="Request.NotFound" xml:space="preserve">
+    <value>عفواً، لم يتم العثور على الطلب.</value>
+  </data>
+  <data name="RequestNotFound" xml:space="preserve">
+    <value>عفواً، لم يتم العثور على الطلب.</value>
+  </data>
+  <data name="Request.InvalidStatusForReview" xml:space="preserve">
+    <value>لا يمكن مراجعة الطلب في حالته الحالية.</value>
+  </data>
+  <data name="Request.InvalidStatus" xml:space="preserve">
+    <value>حالة الطلب غير صالحة لتنفيذ هذا الإجراء.</value>
+  </data>
+  <data name="Request.AlreadyProcessed" xml:space="preserve">
+    <value>تم اتخاذ قرار بشأن هذا الطلب سابقاً.</value>
+  </data>
+  <data name="Request.InvalidStatusForSendEmail" xml:space="preserve">
+    <value>لا يمكن إرسال الطلب للإدارة في حالته الحالية.</value>
+  </data>
+  <data name="Email.SendFailed" xml:space="preserve">
+    <value>تعذر إرسال البريد الإلكتروني للإدارة. يرجى التحقق من العنوان والمحاولة لاحقاً.</value>
+  </data>
+  <data name="Request.InvalidForAdministrationConfirm" xml:space="preserve">
+    <value>عفواً، تم اتخاذ قرار بشأن هذا الطلب أو أنه في حالة لا تسمح بالتأكيد.</value>
+  </data>
+  <data name="Request.InvalidExternalAdministrationOtp" xml:space="preserve">
+    <value>رمز التحقق غير صحيح أو انتهت صلاحيته.</value>
+  </data>
+  <data name="Request.InvalidStatusForWithdraw" xml:space="preserve">
+    <value>لا يمكن سحب الطلب لأنه قيد المعالجة بالفعل أو تم الفصل فيه.</value>
+  </data>
+  <data name="Request.InvalidStatusForAdminOverride" xml:space="preserve">
+    <value>لا يمكن تغيير حالة الطلب مباشرة إلى هذه الحالة.</value>
+  </data>
+  <data name="Student.NotFound" xml:space="preserve">
+    <value>عفواً، لم يتم العثور على بيانات الطالب.</value>
+  </data>
+  <data name="Student.NotApproved" xml:space="preserve">
+    <value>حسابك الأكاديمي ما زال قيد الموافقة، لا يمكنك تقديم طلبات حالياً.</value>
+  </data>
+  <data name="Request.GpaTooLow" xml:space="preserve">
+    <value>الحد الأدنى للمعدل التراكمي (GPA) هو 3.00 لتسجيل ساعات إضافية.</value>
+  </data>
+  <data name="Request.UnauthorizedAccess" xml:space="preserve">
+    <value>عفواً، ليس لديك صلاحية للاطلاع على هذا الطلب.</value>
+  </data>
+
+  <!-- Form Errors -->
+  <data name="Form.NotFound" xml:space="preserve">
+    <value>نموذج الطلب غير موجود.</value>
+  </data>
+  <data name="Form.Closed" xml:space="preserve">
+    <value>عفواً، التقديم على هذا النموذج مغلق حالياً.</value>
+  </data>
+  <data name="Form.FieldNotFound" xml:space="preserve">
+    <value>حقل النموذج غير موجود.</value>
+  </data>
+  <data name="Form.RequiredFieldMissing" xml:space="preserve">
+    <value>الحقل الإجباري [{0}] مفقود أو فارغ.</value>
+  </data>
+  <data name="Form.InvalidFieldType" xml:space="preserve">
+    <value>القيمة المدخلة للحقل [{0}] غير صالحة.</value>
+  </data>
+
+  <!-- Advisor Assignment Errors -->
+  <data name="Advisor.NotFound" xml:space="preserve">
+    <value>لم يتم العثور على المرشد الأكاديمي.</value>
+  </data>
+  <data name="Assignment.NotFound" xml:space="preserve">
+    <value>لا يوجد توزيع مرشد أكاديمي لهذا الرقم الجامعي.</value>
+  </data>
+  <data name="Advisor.NoAdvisorsFound" xml:space="preserve">
+    <value>لا يوجد مرشدين أكاديميين مسجلين بالنظام، يرجى إضافة مرشد أولاً.</value>
+  </data>
+
+  <!-- Validation Messages -->
+  <data name="الاسم الأول باللغة العربية مطلوب." xml:space="preserve">
+    <value>يرجى إدخال الاسم الأول باللغة العربية.</value>
+  </data>
+  <data name="اسم العائلة باللغة العربية مطلوب." xml:space="preserve">
+    <value>يرجى إدخال اسم العائلة باللغة العربية.</value>
+  </data>
+  <data name="English First Name is required." xml:space="preserve">
+    <value>يرجى إدخال الاسم الأول باللغة الإنجليزية.</value>
+  </data>
+  <data name="English Last Name is required." xml:space="preserve">
+    <value>يرجى إدخال اسم العائلة باللغة الإنجليزية.</value>
+  </data>
+  <data name="الرقم الجامعي مطلوب." xml:space="preserve">
+    <value>يرجى إدخال الرقم الجامعي.</value>
+  </data>
+  <data name="الرقم القومي مطلوب." xml:space="preserve">
+    <value>يرجى إدخال الرقم القومي.</value>
+  </data>
+  <data name="الرقم القومي يجب أن يتكون من 14 رقم فقط." xml:space="preserve">
+    <value>الرقم القومي يجب أن يتكون من 14 رقماً.</value>
+  </data>
+  <data name="البريد الإلكتروني غير صحيح." xml:space="preserve">
+    <value>يرجى إدخال بريد إلكتروني صحيح.</value>
+  </data>
+  <data name="البريد الإلكتروني مطلوب وسليم." xml:space="preserve">
+    <value>يرجى إدخال بريد إلكتروني صحيح.</value>
+  </data>
+  <data name="رقم الهاتف مطلوب." xml:space="preserve">
+    <value>يرجى إدخال رقم الهاتف.</value>
+  </data>
+  <data name="العنوان مطلوب." xml:space="preserve">
+    <value>يرجى إدخال العنوان.</value>
+  </data>
+  <data name="كلمة المرور مطلوبة." xml:space="preserve">
+    <value>يرجى إدخال كلمة المرور.</value>
+  </data>
+  <data name="كلمة المرور يجب ألا تقل عن 6 أحرف." xml:space="preserve">
+    <value>كلمة المرور يجب ألا تقل عن 6 أحرف.</value>
+  </data>
+  <data name="الاسم الكامل باللغة العربية مطلوب." xml:space="preserve">
+    <value>يرجى إدخال الاسم الكامل باللغة العربية.</value>
+  </data>
+  <data name="الاسم العربي يجب أن يتكون من كلمتين على الأقل (الاسم الأول واسم العائلة)." xml:space="preserve">
+    <value>الاسم العربي يجب أن يتكون من كلمتين على الأقل.</value>
+  </data>
+  <data name="Full English Name is required." xml:space="preserve">
+    <value>يرجى إدخال الاسم الكامل باللغة الإنجليزية.</value>
+  </data>
+  <data name="English name must contain at least two parts (First Name and Last Name)." xml:space="preserve">
+    <value>الاسم الإنجليزي يجب أن يتكون من كلمتين على الأقل.</value>
+  </data>
+  <data name="سبب الرفض مطلوب عند رفض الطلب." xml:space="preserve">
+    <value>يرجى توضيح سبب الرفض.</value>
+  </data>
+  <data name="معرف المرشد الأكاديمي مطلوب." xml:space="preserve">
+    <value>يرجى اختيار المرشد الأكاديمي.</value>
+  </data>
+  <data name="قائمة الأكواد الجامعية لا يمكن أن تكون فارغة." xml:space="preserve">
+    <value>يرجى إدخال كود جامعي واحد على الأقل.</value>
+  </data>
+  <data name="يجب تحديد النموذج (FormDefinitionId) المراد التقديم عليه." xml:space="preserve">
+    <value>يرجى اختيار النموذج المراد التقديم عليه.</value>
+  </data>
+</root>

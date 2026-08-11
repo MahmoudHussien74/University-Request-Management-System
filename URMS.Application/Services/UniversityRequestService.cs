@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Mapster;
@@ -814,14 +815,42 @@ public class UniversityRequestService : IUniversityRequestService
         List<RequestHistoryLogDto>? historyLogsDto = null;
         if (request.HistoryLogs != null && request.HistoryLogs.Any())
         {
+            var isEnglish = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("en", StringComparison.OrdinalIgnoreCase);
+
             historyLogsDto = request.HistoryLogs.OrderByDescending(l => l.ActionDate)
-                .Select(l => new RequestHistoryLogDto(
-                    l.ActionBy?.FullNameAr ?? "System",
-                    l.OldStatus.ToString(),
-                    l.NewStatus.ToString(),
-                    l.ActionMessage,
-                    l.ActionDate
-                )).ToList();
+                .Select(l =>
+                {
+                    var oldDisplay = GetStatusDisplay(l.OldStatus, null);
+                    var newDisplay = GetStatusDisplay(l.NewStatus, null);
+
+                    var nameAr = l.ActionBy?.FullNameAr ?? "النظام";
+                    var nameEn = l.ActionBy?.FullNameEn ?? "System";
+
+                    var msgAr = l.ActionMessage;
+                    var msgEn = RequestLogMessages.GetEnglishMessage(l.ActionMessage);
+
+                    var nameDisplay = isEnglish ? nameEn : nameAr;
+                    var oldStatusDisplay = isEnglish ? oldDisplay.StatusEn : oldDisplay.StatusAr;
+                    var newStatusDisplay = isEnglish ? newDisplay.StatusEn : newDisplay.StatusAr;
+                    var msgDisplay = isEnglish ? msgEn : msgAr;
+
+                    return new RequestHistoryLogDto(
+                        ActionByName: nameDisplay,
+                        OldStatusName: oldStatusDisplay,
+                        NewStatusName: newStatusDisplay,
+                        ActionMessage: msgDisplay,
+                        ActionDate: l.ActionDate,
+                        ActionByNameAr: nameAr,
+                        ActionByNameEn: nameEn,
+                        OldStatusNameAr: oldDisplay.StatusAr,
+                        OldStatusNameEn: oldDisplay.StatusEn,
+                        NewStatusNameAr: newDisplay.StatusAr,
+                        NewStatusNameEn: newDisplay.StatusEn,
+                        ActionMessageAr: msgAr,
+                        ActionMessageEn: msgEn,
+                        Notes: l.Notes
+                    );
+                }).ToList();
         }
 
         var dto = request.Adapt<UniversityRequestResponseDto>();

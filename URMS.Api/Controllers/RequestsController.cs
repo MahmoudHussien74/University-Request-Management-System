@@ -71,7 +71,7 @@ public class RequestsController : ControllerBase
 
         var result = await _requestService.GetMyRequestsAsync(studentId, status, searchColumn, searchTerm, pageNumber, pageSize);
 
-        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+        return result.ToResponse(HttpContext);
     }
 
     /// <summary>
@@ -101,7 +101,7 @@ public class RequestsController : ControllerBase
             result = await _requestService.GetAllRequestsAsync(status, searchColumn, searchTerm, pageNumber, pageSize);
         }
 
-        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+        return result.ToResponse(HttpContext);
     }
 
     /// <summary>
@@ -113,7 +113,7 @@ public class RequestsController : ControllerBase
     {
         var result = await _requestService.GetRequestByIdAsync(id, User.GetUserId(), User.GetUserRoles());
 
-        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+        return result.ToResponse(HttpContext);
     }
 
     /// <summary>
@@ -129,7 +129,7 @@ public class RequestsController : ControllerBase
 
         var result = await _requestService.ReviewByAdvisorAsync(id, advisorId, dto);
 
-        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+        return result.ToResponse(HttpContext, LocalizationKeys.AdvisorReviewSuccess);
     }
 
     /// <summary>
@@ -145,10 +145,9 @@ public class RequestsController : ControllerBase
 
         var result = await _requestService.SendRequestToAdministrationAsync(id, dto, advisorId);
 
-        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+        return result.ToResponse(HttpContext, LocalizationKeys.SentToAdministrationSuccess);
     }
 
-    /// <summary>
     /// <summary>
     /// Public endpoint for external administration to view the request by token.
     /// </summary>
@@ -158,7 +157,7 @@ public class RequestsController : ControllerBase
     {
         var result = await _requestService.GetRequestByTokenAsync(token);
 
-        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+        return result.ToResponse(HttpContext);
     }
 
     /// <summary>
@@ -170,7 +169,7 @@ public class RequestsController : ControllerBase
     {
         var result = await _requestService.RespondExternalRequestAsync(token, dto);
 
-        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+        return result.ToResponse(HttpContext, LocalizationKeys.ExternalResponseSuccess);
     }
 
     /// <summary>
@@ -187,7 +186,7 @@ public class RequestsController : ControllerBase
 
         var result = await _requestService.ConfirmByAdministrationAsync(id, secretaryId, dto);
 
-        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+        return result.ToResponse(HttpContext, LocalizationKeys.ExternalResponseSuccess);
     }
 
     /// <summary>
@@ -203,7 +202,7 @@ public class RequestsController : ControllerBase
 
         var result = await _requestService.WithdrawRequestAsync(id, studentId);
 
-        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+        return result.ToResponse(HttpContext, LocalizationKeys.RequestWithdrawnSuccess);
     }
 
     /// <summary>
@@ -219,6 +218,6 @@ public class RequestsController : ControllerBase
 
         var result = await _requestService.OverrideStatusByAdminAsync(id, adminId, dto);
 
-        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+        return result.ToResponse(HttpContext, LocalizationKeys.StatusOverrideSuccess);
     }
 }

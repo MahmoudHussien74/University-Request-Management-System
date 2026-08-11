@@ -34,7 +34,7 @@ public class AdvisorAssignmentsController : ControllerBase
         var advisorUserId = User.GetUserId();
         var result = await _assignmentService.GetMyStudentsAsync(advisorUserId, searchColumn, searchTerm, pageNumber, pageSize);
 
-        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+        return result.ToResponse(HttpContext);
     }
 
     /// <summary>
@@ -47,9 +47,7 @@ public class AdvisorAssignmentsController : ControllerBase
     {
         var result = await _assignmentService.BulkAssignAsync(dto);
 
-        return result.IsSuccess
-            ? Ok(new { message = $"{result.Value} student code(s) assigned successfully." })
-            : result.ToProblem();
+        return result.ToResponse(HttpContext);
     }
 
     /// <summary>
@@ -66,7 +64,7 @@ public class AdvisorAssignmentsController : ControllerBase
     {
         var result = await _assignmentService.GetAssignmentsByAdvisorAsync(advisorId, searchColumn, searchTerm, pageNumber, pageSize);
 
-        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+        return result.ToResponse(HttpContext);
     }
 
     /// <summary>
@@ -82,7 +80,7 @@ public class AdvisorAssignmentsController : ControllerBase
     {
         var result = await _assignmentService.GetAllAssignmentsAsync(searchColumn, searchTerm, pageNumber, pageSize);
 
-        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+        return result.ToResponse(HttpContext);
     }
 
     /// <summary>
@@ -94,9 +92,7 @@ public class AdvisorAssignmentsController : ControllerBase
     {
         var result = await _assignmentService.RemoveAssignmentAsync(universityCode);
 
-        return result.IsSuccess
-            ? Ok(new { message = "Assignment removed successfully." })
-            : result.ToProblem();
+        return result.ToResponse(HttpContext);
     }
 
     /// <summary>
@@ -108,9 +104,7 @@ public class AdvisorAssignmentsController : ControllerBase
     {
         var result = await _assignmentService.ReassignAsync(dto);
 
-        return result.IsSuccess
-            ? Ok(new { message = "Student reassigned successfully." })
-            : result.ToProblem();
+        return result.ToResponse(HttpContext);
     }
 
     /// <summary>
@@ -131,6 +125,6 @@ public class AdvisorAssignmentsController : ControllerBase
         using var stream = file.OpenReadStream();
         var result = await _assignmentService.ImportFromExcelAsync(stream);
 
-        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+        return result.ToResponse(HttpContext);
     }
 }

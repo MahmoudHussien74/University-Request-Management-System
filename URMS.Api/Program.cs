@@ -61,9 +61,18 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+var supportedCultures = new[] { "ar-EG", "ar", "en-US", "en" };
+builder.Services.Configure<RequestLocalizationOptions>(options =>
+{
+    options.SetDefaultCulture("ar-EG")
+           .AddSupportedCultures(supportedCultures)
+           .AddSupportedUICultures(supportedCultures);
+});
+
 var app = builder.Build();
 
 // ─── 5. Configure HTTP Middleware Pipeline ───
+app.UseRequestLocalization();
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {

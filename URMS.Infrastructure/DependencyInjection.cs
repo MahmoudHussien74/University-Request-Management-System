@@ -8,8 +8,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using URMS.Application.Common.Models;
 using URMS.Application.Contracts.Identity;
 using URMS.Application.Contracts.Infrastructure;
+using URMS.Domain.Constants;
 using URMS.Domain.Entities;
 using URMS.Domain.Settings;
 using URMS.Infrastructure.Identity;
@@ -71,16 +73,39 @@ public static class DependencyInjection
                 ClockSkew = TimeSpan.Zero
             };
 
-            // Read JWT token from HttpOnly Cookie if Authorization header is missing
+            // Read JWT token from HttpOnly Cookie if Authorization header is missing & return localized 401/403 responses
             options.Events = new JwtBearerEvents
             {
                 OnMessageReceived = context =>
                 {
-                    if (context.Request.Cookies.TryGetValue("accessToken", out var token))
+                    if (context.Request.Cookies.TryGetValue(AuthConstants.AccessTokenCookie, out var token))
                     {
                         context.Token = token;
                     }
                     return Task.CompletedTask;
+                },
+                OnChallenge = async context =>
+                {
+                    context.HandleResponse();
+                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    context.Response.ContentType = "application/json";
+
+                    var localizer = context.HttpContext.RequestServices.GetService<ILocalizationService>();
+                    var message = localizer?.GetLocalizedString("UnauthorizedAccess") ?? "عفواً، يجب تسجيل الدخول للوصول إلى هذه الصفحة.";
+                    var response = ApiResponse.Failure(message, [new ApiError("UnauthorizedAccess", message)], StatusCodes.Status401Unauthorized);
+
+                    await context.Response.WriteAsJsonAsync(response);
+                },
+                OnForbidden = async context =>
+                {
+                    context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    context.Response.ContentType = "application/json";
+
+                    var localizer = context.HttpContext.RequestServices.GetService<ILocalizationService>();
+                    var message = localizer?.GetLocalizedString("ForbiddenAccess") ?? "عفواً، ليس لديك صلاحية لتنفيذ هذا الإجراء.";
+                    var response = ApiResponse.Failure(message, [new ApiError("ForbiddenAccess", message)], StatusCodes.Status403Forbidden);
+
+                    await context.Response.WriteAsJsonAsync(response);
                 }
             };
         });
@@ -93,15 +118,27 @@ public static class DependencyInjection
             options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
             options.ExpireTimeSpan = TimeSpan.FromDays(7);
             options.SlidingExpiration = true;
-            options.Events.OnRedirectToLogin = context =>
+            options.Events.OnRedirectToLogin = async context =>
             {
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                return Task.CompletedTask;
+                context.Response.ContentType = "application/json";
+
+                var localizer = context.HttpContext.RequestServices.GetService<ILocalizationService>();
+                var message = localizer?.GetLocalizedString("UnauthorizedAccess") ?? "عفواً، يجب تسجيل الدخول للوصول إلى هذه الصفحة.";
+                var response = ApiResponse.Failure(message, [new ApiError("UnauthorizedAccess", message)], StatusCodes.Status401Unauthorized);
+
+                await context.Response.WriteAsJsonAsync(response);
             };
-            options.Events.OnRedirectToAccessDenied = context =>
+            options.Events.OnRedirectToAccessDenied = async context =>
             {
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;
-                return Task.CompletedTask;
+                context.Response.ContentType = "application/json";
+
+                var localizer = context.HttpContext.RequestServices.GetService<ILocalizationService>();
+                var message = localizer?.GetLocalizedString("ForbiddenAccess") ?? "عفواً، ليس لديك صلاحية لتنفيذ هذا الإجراء.";
+                var response = ApiResponse.Failure(message, [new ApiError("ForbiddenAccess", message)], StatusCodes.Status403Forbidden);
+
+                await context.Response.WriteAsJsonAsync(response);
             };
         });
 
@@ -109,7 +146,10 @@ public static class DependencyInjection
         services.AddScoped(typeof(URMS.Domain.Contracts.IGenericRepository<>), typeof(URMS.Infrastructure.Persistence.Repositories.GenericRepository<>));
         services.AddScoped<URMS.Application.Contracts.Persistence.IUnitOfWork, URMS.Infrastructure.Persistence.Repositories.UnitOfWork>();
 
-        // ─── 5. Custom Auth, JWT, Permission & Request Services ───
+        // ─── 5. Custom Auth, JWT, Permission, Request & Localization Services ───
+        services.AddHttpContextAccessor();
+        services.AddLocalization();
+        services.AddScoped<ILocalizationService, LocalizationService>();
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IRolePermissionService, RolePermissionService>();
@@ -117,7 +157,7 @@ public static class DependencyInjection
         services.AddScoped<IAdvisorAssignmentService, AdvisorAssignmentService>();
         services.AddScoped<IEmailService, EmailService>();
 
-        // ─── 5. Dynamic Permission Policy Provider & Handler ───
+        // ─── 6. Dynamic Permission Policy Provider & Handler ───
         services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
         services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
 

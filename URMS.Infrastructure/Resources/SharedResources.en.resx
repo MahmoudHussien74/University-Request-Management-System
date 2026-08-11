@@ -1,0 +1,317 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Common & System Messages -->
+  <data name="SuccessDefault" xml:space="preserve">
+    <value>Operation completed successfully.</value>
+  </data>
+  <data name="ValidationFailed" xml:space="preserve">
+    <value>Please review the entered information and correct any errors.</value>
+  </data>
+  <data name="InternalServerError" xml:space="preserve">
+    <value>An unexpected technical error occurred. Please try again later.</value>
+  </data>
+  <data name="UnauthorizedAccess" xml:space="preserve">
+    <value>Unauthorized access. Please log in to continue.</value>
+  </data>
+  <data name="ForbiddenAccess" xml:space="preserve">
+    <value>You do not have permission to perform this action.</value>
+  </data>
+
+  <!-- Auth & Account Success -->
+  <data name="UserRegisteredSuccessfully" xml:space="preserve">
+    <value>Student account registered successfully. Pending academic advisor approval.</value>
+  </data>
+  <data name="LoginSuccessful" xml:space="preserve">
+    <value>Logged in successfully.</value>
+  </data>
+  <data name="LogoutSuccessful" xml:space="preserve">
+    <value>Logged out successfully.</value>
+  </data>
+  <data name="PasswordChangedSuccessfully" xml:space="preserve">
+    <value>Password changed successfully.</value>
+  </data>
+  <data name="StudentApprovedSuccessfully" xml:space="preserve">
+    <value>Student account approved and activated successfully.</value>
+  </data>
+  <data name="AccountDeactivatedSuccessfully" xml:space="preserve">
+    <value>Account deactivated successfully.</value>
+  </data>
+  <data name="AccountReactivatedSuccessfully" xml:space="preserve">
+    <value>Account reactivated successfully.</value>
+  </data>
+  <data name="AdvisorCreatedSuccessfully" xml:space="preserve">
+    <value>Academic advisor account created successfully.</value>
+  </data>
+  <data name="BulkAdvisorsCreatedSuccessfully" xml:space="preserve">
+    <value>Academic advisor accounts created successfully.</value>
+  </data>
+  <data name="StudentsAssignedSuccessfully" xml:space="preserve">
+    <value>Students assigned to advisor successfully.</value>
+  </data>
+  <data name="AssignmentRemovedSuccessfully" xml:space="preserve">
+    <value>Student assignment removed successfully.</value>
+  </data>
+
+  <!-- Request Operation Success -->
+  <data name="AdvisorReviewSuccess" xml:space="preserve">
+    <value>Advisor review recorded successfully.</value>
+  </data>
+  <data name="SentToAdministrationSuccess" xml:space="preserve">
+    <value>Request sent to administration successfully.</value>
+  </data>
+  <data name="ExternalResponseSuccess" xml:space="preserve">
+    <value>Administration response recorded successfully.</value>
+  </data>
+  <data name="RequestWithdrawnSuccess" xml:space="preserve">
+    <value>Request withdrawn successfully.</value>
+  </data>
+  <data name="StatusOverrideSuccess" xml:space="preserve">
+    <value>Request status updated successfully.</value>
+  </data>
+
+  <!-- User & Auth Errors -->
+  <data name="User.NotFound" xml:space="preserve">
+    <value>User account could not be found.</value>
+  </data>
+  <data name="UserNotFound" xml:space="preserve">
+    <value>User account could not be found.</value>
+  </data>
+  <data name="UserNotFoundMessage" xml:space="preserve">
+    <value>User account could not be found.</value>
+  </data>
+  <data name="Auth.InvalidCredentials" xml:space="preserve">
+    <value>Incorrect email address or password.</value>
+  </data>
+  <data name="User.InvalidCredentials" xml:space="preserve">
+    <value>Incorrect email address or password.</value>
+  </data>
+  <data name="InvalidCredentials" xml:space="preserve">
+    <value>Incorrect email address or password.</value>
+  </data>
+  <data name="InvalidCredentialsMessage" xml:space="preserve">
+    <value>Incorrect email address or password.</value>
+  </data>
+  <data name="Auth.AccountDeactivated" xml:space="preserve">
+    <value>This account is currently deactivated. Please contact administration.</value>
+  </data>
+  <data name="User.AccountDeactivated" xml:space="preserve">
+    <value>This account is currently deactivated. Please contact administration.</value>
+  </data>
+  <data name="Auth.AccountNotApproved" xml:space="preserve">
+    <value>Your account is currently pending approval by your academic advisor.</value>
+  </data>
+  <data name="User.PendingApproval" xml:space="preserve">
+    <value>Your account is currently pending approval by your academic advisor.</value>
+  </data>
+  <data name="Auth.DuplicateEmail" xml:space="preserve">
+    <value>This email address is already registered.</value>
+  </data>
+  <data name="User.EmailAlreadyExists" xml:space="preserve">
+    <value>This email address is already registered.</value>
+  </data>
+  <data name="Auth.DuplicateUniversityCode" xml:space="preserve">
+    <value>This university code is already registered.</value>
+  </data>
+  <data name="User.UniversityCodeAlreadyExists" xml:space="preserve">
+    <value>This university code is already registered.</value>
+  </data>
+  <data name="Auth.DuplicateNationalId" xml:space="preserve">
+    <value>This national ID is already registered.</value>
+  </data>
+  <data name="User.NationalIdAlreadyExists" xml:space="preserve">
+    <value>This national ID is already registered.</value>
+  </data>
+  <data name="User.AlreadyApproved" xml:space="preserve">
+    <value>Student account is already approved.</value>
+  </data>
+  <data name="Auth.InvalidRefreshToken" xml:space="preserve">
+    <value>Invalid login session. Please log in again.</value>
+  </data>
+  <data name="Auth.RefreshTokenInactive" xml:space="preserve">
+    <value>Your session has expired. Please log in again.</value>
+  </data>
+  <data name="Auth.RegistrationFailed" xml:space="preserve">
+    <value>Student registration failed. Please check your details.</value>
+  </data>
+  <data name="Auth.ChangePasswordFailed" xml:space="preserve">
+    <value>Failed to change password. Please verify your current password.</value>
+  </data>
+  <data name="Auth.DuplicateAdvisorCode" xml:space="preserve">
+    <value>Advisor code is already registered.</value>
+  </data>
+  <data name="Advisor.EmptyList" xml:space="preserve">
+    <value>Advisor list cannot be empty.</value>
+  </data>
+
+  <!-- Request Errors -->
+  <data name="Request.NotFound" xml:space="preserve">
+    <value>The requested application could not be found.</value>
+  </data>
+  <data name="RequestNotFound" xml:space="preserve">
+    <value>The requested application could not be found.</value>
+  </data>
+  <data name="Request.InvalidStatusForReview" xml:space="preserve">
+    <value>This request cannot be reviewed in its current status.</value>
+  </data>
+  <data name="Request.InvalidStatus" xml:space="preserve">
+    <value>Invalid request status for this action.</value>
+  </data>
+  <data name="Request.AlreadyProcessed" xml:space="preserve">
+    <value>This request has already been processed.</value>
+  </data>
+  <data name="Request.InvalidStatusForSendEmail" xml:space="preserve">
+    <value>This request cannot be sent to administration in its current status.</value>
+  </data>
+  <data name="Email.SendFailed" xml:space="preserve">
+    <value>Failed to send email to administration. Please check the email address and try again.</value>
+  </data>
+  <data name="Request.InvalidForAdministrationConfirm" xml:space="preserve">
+    <value>This request has already been processed or cannot be confirmed now.</value>
+  </data>
+  <data name="Request.InvalidExternalAdministrationOtp" xml:space="preserve">
+    <value>Verification code is invalid or has expired.</value>
+  </data>
+  <data name="Request.InvalidStatusForWithdraw" xml:space="preserve">
+    <value>Cannot withdraw this request as it is already being processed or completed.</value>
+  </data>
+  <data name="Request.InvalidStatusForAdminOverride" xml:space="preserve">
+    <value>Cannot change status directly to this state.</value>
+  </data>
+  <data name="Student.NotFound" xml:space="preserve">
+    <value>Student details could not be found.</value>
+  </data>
+  <data name="Student.NotApproved" xml:space="preserve">
+    <value>Your academic account is pending approval. You cannot submit requests yet.</value>
+  </data>
+  <data name="Request.GpaTooLow" xml:space="preserve">
+    <value>A minimum GPA of 3.00 is required for extra credit hours.</value>
+  </data>
+  <data name="Request.UnauthorizedAccess" xml:space="preserve">
+    <value>You are not authorized to access this request.</value>
+  </data>
+
+  <!-- Form Errors -->
+  <data name="Form.NotFound" xml:space="preserve">
+    <value>Form definition not found.</value>
+  </data>
+  <data name="Form.Closed" xml:space="preserve">
+    <value>Submissions for this form are currently closed.</value>
+  </data>
+  <data name="Form.FieldNotFound" xml:space="preserve">
+    <value>Form field not found.</value>
+  </data>
+  <data name="Form.RequiredFieldMissing" xml:space="preserve">
+    <value>The required field [{0}] is missing.</value>
+  </data>
+  <data name="Form.InvalidFieldType" xml:space="preserve">
+    <value>The provided value for field [{0}] is invalid.</value>
+  </data>
+
+  <!-- Advisor Assignment Errors -->
+  <data name="Advisor.NotFound" xml:space="preserve">
+    <value>Academic advisor not found.</value>
+  </data>
+  <data name="Assignment.NotFound" xml:space="preserve">
+    <value>No advisor assignment found for this university code.</value>
+  </data>
+  <data name="Advisor.NoAdvisorsFound" xml:space="preserve">
+    <value>No academic advisors found. Please create advisor accounts first.</value>
+  </data>
+
+  <!-- Validation Messages -->
+  <data name="الاسم الأول باللغة العربية مطلوب." xml:space="preserve">
+    <value>Please enter your first name in Arabic.</value>
+  </data>
+  <data name="اسم العائلة باللغة العربية مطلوب." xml:space="preserve">
+    <value>Please enter your last name in Arabic.</value>
+  </data>
+  <data name="English First Name is required." xml:space="preserve">
+    <value>Please enter your first name in English.</value>
+  </data>
+  <data name="English Last Name is required." xml:space="preserve">
+    <value>Please enter your last name in English.</value>
+  </data>
+  <data name="الرقم الجامعي مطلوب." xml:space="preserve">
+    <value>Please enter your university code.</value>
+  </data>
+  <data name="الرقم القومي مطلوب." xml:space="preserve">
+    <value>Please enter your national ID.</value>
+  </data>
+  <data name="الرقم القومي يجب أن يتكون من 14 رقم فقط." xml:space="preserve">
+    <value>National ID must be exactly 14 digits.</value>
+  </data>
+  <data name="البريد الإلكتروني غير صحيح." xml:space="preserve">
+    <value>Please enter a valid email address.</value>
+  </data>
+  <data name="البريد الإلكتروني مطلوب وسليم." xml:space="preserve">
+    <value>Please enter a valid email address.</value>
+  </data>
+  <data name="رقم الهاتف مطلوب." xml:space="preserve">
+    <value>Please enter your phone number.</value>
+  </data>
+  <data name="العنوان مطلوب." xml:space="preserve">
+    <value>Please enter your address.</value>
+  </data>
+  <data name="كلمة المرور مطلوبة." xml:space="preserve">
+    <value>Please enter your password.</value>
+  </data>
+  <data name="كلمة المرور يجب ألا تقل عن 6 أحرف." xml:space="preserve">
+    <value>Password must be at least 6 characters long.</value>
+  </data>
+  <data name="الاسم الكامل باللغة العربية مطلوب." xml:space="preserve">
+    <value>Please enter your full name in Arabic.</value>
+  </data>
+  <data name="الاسم العربي يجب أن يتكون من كلمتين على الأقل (الاسم الأول واسم العائلة)." xml:space="preserve">
+    <value>Arabic name must contain at least two words.</value>
+  </data>
+  <data name="Full English Name is required." xml:space="preserve">
+    <value>Please enter your full name in English.</value>
+  </data>
+  <data name="English name must contain at least two parts (First Name and Last Name)." xml:space="preserve">
+    <value>English name must contain at least two words.</value>
+  </data>
+  <data name="سبب الرفض مطلوب عند رفض الطلب." xml:space="preserve">
+    <value>Please provide a reason for rejection.</value>
+  </data>
+  <data name="معرف المرشد الأكاديمي مطلوب." xml:space="preserve">
+    <value>Please select an academic advisor.</value>
+  </data>
+  <data name="قائمة الأكواد الجامعية لا يمكن أن تكون فارغة." xml:space="preserve">
+    <value>Please provide at least one university code.</value>
+  </data>
+  <data name="يجب تحديد النموذج (FormDefinitionId) المراد التقديم عليه." xml:space="preserve">
+    <value>Please select a valid form to submit.</value>
+  </data>
+</root>
