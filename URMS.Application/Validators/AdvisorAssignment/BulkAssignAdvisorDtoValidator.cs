@@ -7,7 +7,11 @@ public class BulkAssignStudentsDtoValidator : AbstractValidator<BulkAssignStuden
 {
     public BulkAssignStudentsDtoValidator()
     {
-        RuleFor(x => x.AdvisorId).NotEmpty().WithMessage("معرف المرشد الأكاديمي مطلوب.");
-        RuleFor(x => x.UniversityCodes).NotEmpty().WithMessage("قائمة الأكواد الجامعية لا يمكن أن تكون فارغة.");
+        RuleFor(x => x.AdvisorId)
+            .NotEmpty()
+            .WithMessage("معرف المرشد الأكاديمي مطلوب.");
+        RuleFor(x => x.UniversityCodes)
+            .NotEmpty()
+            .WithMessage("قائمة الأكواد الجامعية لا يمكن أن تكون فارغة.");
     }
 }

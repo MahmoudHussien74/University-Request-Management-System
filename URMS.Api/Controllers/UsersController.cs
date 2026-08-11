@@ -20,14 +20,18 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
-    /// Get all students pending approval (IsApproved = false).
+    /// Get all students pending approval (IsApproved = false) with search & pagination.
     /// Accessible by: AcademicAdvisor, CollegeSecretary, SuperAdmin
     /// </summary>
     [HttpGet("pending-students")]
     [HasPermission(Permissions.Users.ApproveRegistration)]
-    public async Task<IActionResult> GetPendingStudents()
+    public async Task<IActionResult> GetPendingStudents(
+        [FromQuery] string? searchColumn = null,
+        [FromQuery] string? searchTerm = null,
+        [FromQuery] int? pageNumber = null,
+        [FromQuery] int? pageSize = null)
     {
-        var result = await _userManagementService.GetPendingStudentsAsync(User.GetUserId(), User.GetUserRoles());
+        var result = await _userManagementService.GetPendingStudentsAsync(User.GetUserId(), User.GetUserRoles(), searchColumn, searchTerm, pageNumber, pageSize);
         return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }
 
@@ -72,14 +76,18 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
-    /// Get all students with their activation status.
+    /// Get all students with their activation status with search & pagination.
     /// Admin/Secretary see all students; Advisor sees only assigned students.
     /// </summary>
     [HttpGet("students-activation")]
     [HasPermission(Permissions.Users.Update)]
-    public async Task<IActionResult> GetStudentsForActivation()
+    public async Task<IActionResult> GetStudentsForActivation(
+        [FromQuery] string? searchColumn = null,
+        [FromQuery] string? searchTerm = null,
+        [FromQuery] int? pageNumber = null,
+        [FromQuery] int? pageSize = null)
     {
-        var result = await _userManagementService.GetAllStudentsForActivationAsync(User.GetUserId(), User.GetUserRoles());
+        var result = await _userManagementService.GetAllStudentsForActivationAsync(User.GetUserId(), User.GetUserRoles(), searchColumn, searchTerm, pageNumber, pageSize);
         return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }
 
@@ -95,5 +103,45 @@ public class UsersController : ControllerBase
         return result.IsSuccess
             ? Ok(new { message = "Student data updated successfully." })
             : result.ToProblem();
+    }
+
+    /// <summary>
+    /// Create a single Academic Advisor account.
+    /// Accessible by: SuperAdmin
+    /// </summary>
+    [HttpPost("advisors")]
+    [HasPermission(Permissions.Users.Create)]
+    public async Task<IActionResult> CreateAdvisor([FromBody] CreateAdvisorDto dto)
+    {
+        var result = await _userManagementService.CreateAdvisorAsync(dto);
+        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+    }
+
+    /// <summary>
+    /// Bulk create Academic Advisor accounts with unified/default password.
+    /// Accessible by: SuperAdmin
+    /// </summary>
+    [HttpPost("advisors/bulk")]
+    [HasPermission(Permissions.Users.Create)]
+    public async Task<IActionResult> BulkCreateAdvisors([FromBody] BulkCreateAdvisorsDto dto)
+    {
+        var result = await _userManagementService.BulkCreateAdvisorsAsync(dto);
+        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
+    }
+
+    /// <summary>
+    /// Get list of all Academic Advisors in the system with search & pagination.
+    /// Accessible by: SuperAdmin, CollegeSecretary
+    /// </summary>
+    [HttpGet("advisors")]
+    [HasPermission(Permissions.Users.View)]
+    public async Task<IActionResult> GetAllAdvisors(
+        [FromQuery] string? searchColumn = null,
+        [FromQuery] string? searchTerm = null,
+        [FromQuery] int? pageNumber = null,
+        [FromQuery] int? pageSize = null)
+    {
+        var result = await _userManagementService.GetAllAdvisorsAsync(searchColumn, searchTerm, pageNumber, pageSize);
+        return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }
 }

@@ -3,12 +3,9 @@ using System.Net.Mail;
 using Microsoft.Extensions.Options;
 using URMS.Domain.Settings;
 
-namespace URMS.Infrastructure.Services;
+using URMS.Application.Contracts.Infrastructure;
 
-public interface IEmailService
-{
-    Task SendEmailAsync(string toEmail, string subject, string htmlBody);
-}
+namespace URMS.Infrastructure.Services;
 
 public class EmailService : IEmailService
 {

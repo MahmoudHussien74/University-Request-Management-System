@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using URMS.Application.Contracts.Identity;
+using URMS.Application.Contracts.Infrastructure;
 using URMS.Domain.Entities;
 using URMS.Domain.Settings;
 using URMS.Infrastructure.Identity;
@@ -115,8 +116,6 @@ public static class DependencyInjection
         services.AddScoped<IUserManagementService, UserManagementService>();
         services.AddScoped<IAdvisorAssignmentService, AdvisorAssignmentService>();
         services.AddScoped<IEmailService, EmailService>();
-        services.AddScoped<URMS.Application.Contracts.Requests.IUniversityRequestService, URMS.Infrastructure.Services.UniversityRequestService>();
-        services.AddScoped<URMS.Application.Contracts.Forms.IFormDefinitionService, URMS.Infrastructure.Services.FormDefinitionService>();
 
         // ─── 5. Dynamic Permission Policy Provider & Handler ───
         services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();

@@ -3,6 +3,9 @@ using FluentValidation;
 using Mapster;
 using MapsterMapper;
 using Microsoft.Extensions.DependencyInjection;
+using URMS.Application.Contracts.Forms;
+using URMS.Application.Contracts.Requests;
+using URMS.Application.Services;
 
 namespace URMS.Application;
 
@@ -20,6 +23,10 @@ public static class DependencyInjection
 
         // 2. FluentValidation Registration
         services.AddValidatorsFromAssembly(assembly);
+
+        // 3. Application Business Services
+        services.AddScoped<IUniversityRequestService, UniversityRequestService>();
+        services.AddScoped<IFormDefinitionService, FormDefinitionService>();
 
         return services;
     }

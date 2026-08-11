@@ -3,6 +3,9 @@ using System.Text.Json;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using URMS.Application.Common.Pagination;
+using URMS.Application.Contracts.Forms;
+using URMS.Application.Contracts.Infrastructure;
 using URMS.Application.Contracts.Persistence;
 using URMS.Application.Contracts.Requests;
 using URMS.Application.DTOs.Requests;
@@ -11,18 +14,19 @@ using URMS.Domain.Constants;
 using URMS.Domain.Entities;
 using URMS.Domain.Enums;
 using URMS.Domain.Settings;
-namespace URMS.Infrastructure.Services;
+
+namespace URMS.Application.Services;
 
 public class UniversityRequestService : IUniversityRequestService
 {
     private readonly IUnitOfWork _unitOfWork;
-    private readonly URMS.Application.Contracts.Forms.IFormDefinitionService _formService;
+    private readonly IFormDefinitionService _formService;
     private readonly IEmailService _emailService;
     private readonly EmailSettings _emailSettings;
 
     public UniversityRequestService(
         IUnitOfWork unitOfWork,
-        URMS.Application.Contracts.Forms.IFormDefinitionService formService,
+        IFormDefinitionService formService,
         IEmailService emailService,
         IOptions<EmailSettings> emailOptions)
     {
@@ -92,7 +96,6 @@ public class UniversityRequestService : IUniversityRequestService
         return Result.Success(MapToDto(request, student, advisor, null));
     }
 
-
     public List<RequestStatusInfoDto> GetRequestStatuses()
     {
         return new List<RequestStatusInfoDto>
@@ -105,64 +108,277 @@ public class UniversityRequestService : IUniversityRequestService
         };
     }
 
-    public async Task<Result<List<UniversityRequestResponseDto>>> GetMyRequestsAsync(string studentId)
+    public async Task<Result<PaginatedList<UniversityRequestResponseDto>>> GetMyRequestsAsync(
+        string studentId,
+        RequestStatus? status = null,
+        string? searchColumn = null,
+        string? searchTerm = null,
+        int? pageNumber = null,
+        int? pageSize = null)
     {
         var requestRepo = _unitOfWork.Repository<UniversityRequest>();
 
-        var requests = await requestRepo.FindAllAsync(
-            r => r.StudentId == studentId,
-            q => q.Include(r => r.Student).ThenInclude(u => u.Student)
-                  .Include(r => r.FormDefinition)
-                  .Include(r => r.Advisor)
-                  .Include(r => r.Administration)
-                  .Include(r => r.HistoryLogs).ThenInclude(l => l.ActionBy),
-            orderBy: q => q.OrderByDescending(r => r.CreatedAt)
-        );
+        IQueryable<UniversityRequest> query = requestRepo.GetQueryable()
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(r => r.Student).ThenInclude(u => u.Student)
+            .Include(r => r.FormDefinition)
+            .Include(r => r.Advisor)
+            .Include(r => r.Administration)
+            .Include(r => r.HistoryLogs).ThenInclude(l => l.ActionBy)
+            .Where(r => r.StudentId == studentId);
 
-        return Result.Success(requests.Select(r => MapToDto(r, r.Student, r.Advisor, r.Administration)).ToList());
+        if (status.HasValue)
+        {
+            query = query.Where(r => r.Status == status.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var term = searchTerm.Trim().ToLower();
+            var col = searchColumn?.Trim().ToLower();
+
+            if (col == "title")
+            {
+                query = query.Where(r => r.FormDefinition != null && (r.FormDefinition.TitleAr.ToLower().Contains(term) || r.FormDefinition.TitleEn.ToLower().Contains(term)));
+            }
+            else if (col == "reason" || col == "rejectionreason")
+            {
+                query = query.Where(r => r.RejectionReason != null && r.RejectionReason.ToLower().Contains(term));
+            }
+            else
+            {
+                query = query.Where(r =>
+                    (r.FormDefinition != null && (r.FormDefinition.TitleAr.ToLower().Contains(term) || r.FormDefinition.TitleEn.ToLower().Contains(term))) ||
+                    (r.RejectionReason != null && r.RejectionReason.ToLower().Contains(term))
+                );
+            }
+        }
+
+        query = query.OrderByDescending(r => r.CreatedAt);
+
+        var totalCount = await query.CountAsync();
+
+        List<UniversityRequest> requests;
+        if (pageSize.HasValue && pageSize > 0)
+        {
+            var pNum = pageNumber.HasValue && pageNumber > 0 ? pageNumber.Value : 1;
+            requests = await query.Skip((pNum - 1) * pageSize.Value).Take(pageSize.Value).ToListAsync();
+        }
+        else
+        {
+            requests = await query.ToListAsync();
+        }
+
+        var dtos = requests.Select(r => MapToDto(r, r.Student, r.Advisor, r.Administration)).ToList();
+
+        var paginatedResult = new PaginatedList<UniversityRequestResponseDto>(dtos, pageNumber, totalCount, pageSize);
+
+        return Result.Success(paginatedResult);
     }
 
-    public async Task<Result<List<UniversityRequestResponseDto>>> GetAllRequestsAsync(RequestStatus? status = null)
+    public async Task<Result<PaginatedList<UniversityRequestResponseDto>>> GetAllRequestsAsync(
+        RequestStatus? status = null,
+        string? searchColumn = null,
+        string? searchTerm = null,
+        int? pageNumber = null,
+        int? pageSize = null)
     {
         var requestRepo = _unitOfWork.Repository<UniversityRequest>();
 
-        var requests = await requestRepo.FindAllAsync(
-            r => !status.HasValue || r.Status == status.Value,
-            q => q.Include(r => r.Student).ThenInclude(u => u.Student)
-                  .Include(r => r.FormDefinition)
-                  .Include(r => r.Advisor)
-                  .Include(r => r.HistoryLogs).ThenInclude(l => l.ActionBy),
-            orderBy: q => q.OrderByDescending(r => r.CreatedAt)
-        );
+        IQueryable<UniversityRequest> query = requestRepo.GetQueryable()
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(r => r.Student).ThenInclude(u => u.Student)
+            .Include(r => r.FormDefinition)
+            .Include(r => r.Advisor)
+            .Include(r => r.Administration)
+            .Include(r => r.HistoryLogs).ThenInclude(l => l.ActionBy);
 
-        return Result.Success(requests.Select(r => MapToDto(r, r.Student, r.Advisor, r.Administration)).ToList());
+        if (status.HasValue)
+        {
+            query = query.Where(r => r.Status == status.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var term = searchTerm.Trim().ToLower();
+            var col = searchColumn?.Trim().ToLower();
+
+            if (col == "title")
+            {
+                query = query.Where(r => r.FormDefinition != null && (r.FormDefinition.TitleAr.ToLower().Contains(term) || r.FormDefinition.TitleEn.ToLower().Contains(term)));
+            }
+            else if (col == "code" || col == "universitycode")
+            {
+                query = query.Where(r => r.Student != null && r.Student.Student != null && r.Student.Student.UniversityCode.ToLower().Contains(term));
+            }
+            else if (col == "studentname" || col == "name")
+            {
+                query = query.Where(r => r.Student != null && (
+                    r.Student.FirstNameAr.ToLower().Contains(term) || r.Student.LastNameAr.ToLower().Contains(term) ||
+                    (r.Student.SecondNameAr != null && r.Student.SecondNameAr.ToLower().Contains(term)) ||
+                    (r.Student.ThirdNameAr != null && r.Student.ThirdNameAr.ToLower().Contains(term)) ||
+                    r.Student.FirstNameEn.ToLower().Contains(term) || r.Student.LastNameEn.ToLower().Contains(term) ||
+                    (r.Student.SecondNameEn != null && r.Student.SecondNameEn.ToLower().Contains(term)) ||
+                    (r.Student.ThirdNameEn != null && r.Student.ThirdNameEn.ToLower().Contains(term))
+                ));
+            }
+            else if (col == "advisorname")
+            {
+                query = query.Where(r => r.Advisor != null && (
+                    r.Advisor.FirstNameAr.ToLower().Contains(term) || r.Advisor.LastNameAr.ToLower().Contains(term) ||
+                    (r.Advisor.SecondNameAr != null && r.Advisor.SecondNameAr.ToLower().Contains(term)) ||
+                    (r.Advisor.ThirdNameAr != null && r.Advisor.ThirdNameAr.ToLower().Contains(term)) ||
+                    r.Advisor.FirstNameEn.ToLower().Contains(term) || r.Advisor.LastNameEn.ToLower().Contains(term) ||
+                    (r.Advisor.SecondNameEn != null && r.Advisor.SecondNameEn.ToLower().Contains(term)) ||
+                    (r.Advisor.ThirdNameEn != null && r.Advisor.ThirdNameEn.ToLower().Contains(term))
+                ));
+            }
+            else
+            {
+                query = query.Where(r =>
+                    (r.Student != null && (
+                        r.Student.FirstNameAr.ToLower().Contains(term) || r.Student.LastNameAr.ToLower().Contains(term) ||
+                        (r.Student.SecondNameAr != null && r.Student.SecondNameAr.ToLower().Contains(term)) ||
+                        (r.Student.ThirdNameAr != null && r.Student.ThirdNameAr.ToLower().Contains(term)) ||
+                        r.Student.FirstNameEn.ToLower().Contains(term) || r.Student.LastNameEn.ToLower().Contains(term) ||
+                        (r.Student.SecondNameEn != null && r.Student.SecondNameEn.ToLower().Contains(term)) ||
+                        (r.Student.ThirdNameEn != null && r.Student.ThirdNameEn.ToLower().Contains(term)) ||
+                        (r.Student.Student != null && r.Student.Student.UniversityCode.ToLower().Contains(term))
+                    )) ||
+                    (r.FormDefinition != null && (r.FormDefinition.TitleAr.ToLower().Contains(term) || r.FormDefinition.TitleEn.ToLower().Contains(term))) ||
+                    (r.Advisor != null && (
+                        r.Advisor.FirstNameAr.ToLower().Contains(term) || r.Advisor.LastNameAr.ToLower().Contains(term) ||
+                        (r.Advisor.SecondNameAr != null && r.Advisor.SecondNameAr.ToLower().Contains(term)) ||
+                        (r.Advisor.ThirdNameAr != null && r.Advisor.ThirdNameAr.ToLower().Contains(term)) ||
+                        r.Advisor.FirstNameEn.ToLower().Contains(term) || r.Advisor.LastNameEn.ToLower().Contains(term) ||
+                        (r.Advisor.SecondNameEn != null && r.Advisor.SecondNameEn.ToLower().Contains(term)) ||
+                        (r.Advisor.ThirdNameEn != null && r.Advisor.ThirdNameEn.ToLower().Contains(term))
+                    ))
+                );
+            }
+        }
+
+        query = query.OrderByDescending(r => r.CreatedAt);
+
+        var totalCount = await query.CountAsync();
+
+        List<UniversityRequest> requests;
+        if (pageSize.HasValue && pageSize > 0)
+        {
+            var pNum = pageNumber.HasValue && pageNumber > 0 ? pageNumber.Value : 1;
+            requests = await query.Skip((pNum - 1) * pageSize.Value).Take(pageSize.Value).ToListAsync();
+        }
+        else
+        {
+            requests = await query.ToListAsync();
+        }
+
+        var dtos = requests.Select(r => MapToDto(r, r.Student, r.Advisor, r.Administration)).ToList();
+
+        var paginatedResult = new PaginatedList<UniversityRequestResponseDto>(dtos, pageNumber, totalCount, pageSize);
+
+        return Result.Success(paginatedResult);
     }
 
-    public async Task<Result<List<UniversityRequestResponseDto>>> GetAdvisorRequestsAsync(string advisorId, RequestStatus? status = null)
+    public async Task<Result<PaginatedList<UniversityRequestResponseDto>>> GetAdvisorRequestsAsync(
+        string advisorId,
+        RequestStatus? status = null,
+        string? searchColumn = null,
+        string? searchTerm = null,
+        int? pageNumber = null,
+        int? pageSize = null)
     {
         var requestRepo = _unitOfWork.Repository<UniversityRequest>();
 
-        var requests = await requestRepo.FindAllAsync(
-            r => (r.AdvisorId == advisorId || (r.Student.Student != null && r.Student.Student.AcademicAdvisorId == advisorId))
-                 && (!status.HasValue || r.Status == status.Value),
-            q => q.Include(r => r.Student).ThenInclude(u => u.Student)
-                  .Include(r => r.FormDefinition)
-                  .Include(r => r.Advisor)
-                  .Include(r => r.Administration)
-                  .Include(r => r.HistoryLogs).ThenInclude(l => l.ActionBy),
-            orderBy: q => q.OrderByDescending(r => r.CreatedAt)
-        );
+        IQueryable<UniversityRequest> query = requestRepo.GetQueryable()
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(r => r.Student).ThenInclude(u => u.Student)
+            .Include(r => r.FormDefinition)
+            .Include(r => r.Advisor)
+            .Include(r => r.Administration)
+            .Include(r => r.HistoryLogs).ThenInclude(l => l.ActionBy)
+            .Where(r => r.AdvisorId == advisorId || (r.Student.Student != null && r.Student.Student.AcademicAdvisorId == advisorId));
 
-        return Result.Success(requests.Select(r => MapToDto(r, r.Student, r.Advisor, r.Administration)).ToList());
+        if (status.HasValue)
+        {
+            query = query.Where(r => r.Status == status.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var term = searchTerm.Trim().ToLower();
+            var col = searchColumn?.Trim().ToLower();
+
+            if (col == "title")
+            {
+                query = query.Where(r => r.FormDefinition != null && (r.FormDefinition.TitleAr.ToLower().Contains(term) || r.FormDefinition.TitleEn.ToLower().Contains(term)));
+            }
+            else if (col == "code" || col == "universitycode")
+            {
+                query = query.Where(r => r.Student != null && r.Student.Student != null && r.Student.Student.UniversityCode.ToLower().Contains(term));
+            }
+            else if (col == "studentname" || col == "name")
+            {
+                query = query.Where(r => r.Student != null && (
+                    r.Student.FirstNameAr.ToLower().Contains(term) || r.Student.LastNameAr.ToLower().Contains(term) ||
+                    (r.Student.SecondNameAr != null && r.Student.SecondNameAr.ToLower().Contains(term)) ||
+                    (r.Student.ThirdNameAr != null && r.Student.ThirdNameAr.ToLower().Contains(term)) ||
+                    r.Student.FirstNameEn.ToLower().Contains(term) || r.Student.LastNameEn.ToLower().Contains(term) ||
+                    (r.Student.SecondNameEn != null && r.Student.SecondNameEn.ToLower().Contains(term)) ||
+                    (r.Student.ThirdNameEn != null && r.Student.ThirdNameEn.ToLower().Contains(term))
+                ));
+            }
+            else
+            {
+                query = query.Where(r =>
+                    (r.Student != null && (
+                        r.Student.FirstNameAr.ToLower().Contains(term) || r.Student.LastNameAr.ToLower().Contains(term) ||
+                        (r.Student.SecondNameAr != null && r.Student.SecondNameAr.ToLower().Contains(term)) ||
+                        (r.Student.ThirdNameAr != null && r.Student.ThirdNameAr.ToLower().Contains(term)) ||
+                        r.Student.FirstNameEn.ToLower().Contains(term) || r.Student.LastNameEn.ToLower().Contains(term) ||
+                        (r.Student.SecondNameEn != null && r.Student.SecondNameEn.ToLower().Contains(term)) ||
+                        (r.Student.ThirdNameEn != null && r.Student.ThirdNameEn.ToLower().Contains(term)) ||
+                        (r.Student.Student != null && r.Student.Student.UniversityCode.ToLower().Contains(term))
+                    )) ||
+                    (r.FormDefinition != null && (r.FormDefinition.TitleAr.ToLower().Contains(term) || r.FormDefinition.TitleEn.ToLower().Contains(term)))
+                );
+            }
+        }
+
+        query = query.OrderByDescending(r => r.CreatedAt);
+
+        var totalCount = await query.CountAsync();
+
+        List<UniversityRequest> requests;
+        if (pageSize.HasValue && pageSize > 0)
+        {
+            var pNum = pageNumber.HasValue && pageNumber > 0 ? pageNumber.Value : 1;
+            requests = await query.Skip((pNum - 1) * pageSize.Value).Take(pageSize.Value).ToListAsync();
+        }
+        else
+        {
+            requests = await query.ToListAsync();
+        }
+
+        var dtos = requests.Select(r => MapToDto(r, r.Student, r.Advisor, r.Administration)).ToList();
+
+        var paginatedResult = new PaginatedList<UniversityRequestResponseDto>(dtos, pageNumber, totalCount, pageSize);
+
+        return Result.Success(paginatedResult);
     }
 
-    public async Task<Result<UniversityRequestResponseDto>> GetRequestByIdAsync(int requestId)
+    public async Task<Result<UniversityRequestResponseDto>> GetRequestByIdAsync(int requestId, string callerUserId, IList<string> callerRoles)
     {
         var requestRepo = _unitOfWork.Repository<UniversityRequest>();
 
         var request = await requestRepo.FindOneAsync(
             r => r.Id == requestId,
-            q => q.Include(r => r.Student).ThenInclude(u => u.Student)
+            q => q.AsNoTracking()
+                  .AsSplitQuery()
+                  .Include(r => r.Student).ThenInclude(u => u.Student)
                   .Include(r => r.FormDefinition)
                   .Include(r => r.Advisor)
                   .Include(r => r.Administration)
@@ -172,7 +388,17 @@ public class UniversityRequestService : IUniversityRequestService
         if (request is null)
             return Result.Failure<UniversityRequestResponseDto>(RequestErrors.RequestNotFound);
 
-        return Result.Success(MapToDto(request, request.Student, request.Advisor, request.Administration));
+        // IDOR Protection / Ownership & Access Check
+        var isSuperAdminOrSecretary = callerRoles.Contains(AppRoles.SuperAdmin) || callerRoles.Contains(AppRoles.CollegeSecretary);
+        var isOwnerStudent = request.StudentId == callerUserId;
+        var isAssignedAdvisor = request.AdvisorId == callerUserId || request.Student?.Student?.AcademicAdvisorId == callerUserId;
+
+        if (!isSuperAdminOrSecretary && !isOwnerStudent && !isAssignedAdvisor)
+        {
+            return Result.Failure<UniversityRequestResponseDto>(RequestErrors.UnauthorizedAccess);
+        }
+
+        return Result.Success(MapToDto(request, request.Student!, request.Advisor, request.Administration));
     }
 
     public async Task<Result<UniversityRequestResponseDto>> ReviewByAdvisorAsync(int requestId, string advisorId, AdvisorReviewRequestDto dto)
@@ -682,5 +908,4 @@ public class UniversityRequestService : IUniversityRequestService
             System.Text.Encoding.UTF8.GetBytes(computedHash),
             System.Text.Encoding.UTF8.GetBytes(hash));
     }
-
 }

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using URMS.Api.Extensions;
+using URMS.Application.Common.Pagination;
 using URMS.Application.Contracts.Requests;
 using URMS.Application.DTOs.Requests;
 using URMS.Domain.Abstractions;
@@ -53,41 +54,51 @@ public class RequestsController : ControllerBase
     }
 
     /// <summary>
-    /// Student retrieves their own submitted requests.
+    /// Student retrieves their own submitted requests with search, status filter, and pagination.
     /// </summary>
     [HttpGet("my")]
     [HasPermission(Permissions.Requests.ViewOwn)]
-    public async Task<IActionResult> GetMyRequests()
+    public async Task<IActionResult> GetMyRequests(
+        [FromQuery] RequestStatus? status = null,
+        [FromQuery] string? searchColumn = null,
+        [FromQuery] string? searchTerm = null,
+        [FromQuery] int? pageNumber = null,
+        [FromQuery] int? pageSize = null)
     {
         var studentId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(studentId))
             return Unauthorized();
 
-        var result = await _requestService.GetMyRequestsAsync(studentId);
+        var result = await _requestService.GetMyRequestsAsync(studentId, status, searchColumn, searchTerm, pageNumber, pageSize);
 
         return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }
 
     /// <summary>
-    /// Advisor / Secretary lists all requests (optional status filter).
+    /// Advisor / Secretary lists all requests with search, status filter, and pagination.
     /// </summary>
     [HttpGet]
     [HasPermission(Permissions.Requests.View)]
-    public async Task<IActionResult> GetAllRequests([FromQuery] RequestStatus? status)
+    public async Task<IActionResult> GetAllRequests(
+        [FromQuery] RequestStatus? status = null,
+        [FromQuery] string? searchColumn = null,
+        [FromQuery] string? searchTerm = null,
+        [FromQuery] int? pageNumber = null,
+        [FromQuery] int? pageSize = null)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var isAdvisor = User.IsInRole(AppRoles.AcademicAdvisor);
         var isStaffOrAdmin = User.IsInRole(AppRoles.SuperAdmin) || User.IsInRole(AppRoles.CollegeSecretary);
 
-        Result<List<UniversityRequestResponseDto>> result;
+        Result<PaginatedList<UniversityRequestResponseDto>> result;
 
         if (isAdvisor && !isStaffOrAdmin && !string.IsNullOrEmpty(userId))
         {
-            result = await _requestService.GetAdvisorRequestsAsync(userId, status);
+            result = await _requestService.GetAdvisorRequestsAsync(userId, status, searchColumn, searchTerm, pageNumber, pageSize);
         }
         else
         {
-            result = await _requestService.GetAllRequestsAsync(status);
+            result = await _requestService.GetAllRequestsAsync(status, searchColumn, searchTerm, pageNumber, pageSize);
         }
 
         return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
@@ -95,11 +106,12 @@ public class RequestsController : ControllerBase
 
     /// <summary>
     /// Get details of a specific request by ID.
+    /// Accessible only by: Request Owner (Student), Assigned Advisor, Secretary, or SuperAdmin.
     /// </summary>
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetRequestById(int id)
     {
-        var result = await _requestService.GetRequestByIdAsync(id);
+        var result = await _requestService.GetRequestByIdAsync(id, User.GetUserId(), User.GetUserRoles());
 
         return result.IsSuccess ? Ok(result.Value) : result.ToProblem();
     }

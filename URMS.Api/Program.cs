@@ -63,25 +63,7 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// ─── 5. Seed Database Roles, Permissions, and Default SuperAdmin ───
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    try
-    {
-        var context = services.GetRequiredService<AppDbContext>();
-        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
-        var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
-        await DbInitializer.SeedAsync(context, userManager, roleManager);
-    }
-    catch (Exception ex)
-    {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while seeding the database.");
-    }
-}
-
-// ─── 6. Configure HTTP Middleware Pipeline ───
+// ─── 5. Configure HTTP Middleware Pipeline ───
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {

@@ -34,6 +34,9 @@ public static class RequestErrors
 
     public static readonly Error GpaTooLow =
         new("Request.GpaTooLow", "Extra hours registration requires a minimum GPA of 3.00.", 400);
+
+    public static readonly Error UnauthorizedAccess =
+        new("Request.UnauthorizedAccess", "You are not authorized to access this request.", 403);
 }
 
 public static class FormErrors

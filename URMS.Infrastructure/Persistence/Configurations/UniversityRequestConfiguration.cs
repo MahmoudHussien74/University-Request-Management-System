@@ -34,5 +34,14 @@ public class UniversityRequestConfiguration : IEntityTypeConfiguration<Universit
             .WithMany(f => f.Requests)
             .HasForeignKey(r => r.FormDefinitionId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        // ─── Indexes for Query Performance (Checklist Item 6) ───
+        builder.HasIndex(r => r.Status);
+        builder.HasIndex(r => r.ConfirmationToken);
+        builder.HasIndex(r => r.CreatedAt);
+        builder.HasIndex(r => r.StudentId);
+        builder.HasIndex(r => r.AdvisorId);
+
+        
     }
 }

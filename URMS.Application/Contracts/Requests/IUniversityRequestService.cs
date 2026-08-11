@@ -1,3 +1,4 @@
+using URMS.Application.Common.Pagination;
 using URMS.Application.DTOs.Requests;
 using URMS.Domain.Abstractions;
 using URMS.Domain.Enums;
@@ -8,10 +9,10 @@ public interface IUniversityRequestService
 {
     Task<Result<UniversityRequestResponseDto>> CreateRequestAsync(string studentId, CreateUniversityRequestDto dto);
     List<RequestStatusInfoDto> GetRequestStatuses();
-    Task<Result<List<UniversityRequestResponseDto>>> GetMyRequestsAsync(string studentId);
-    Task<Result<List<UniversityRequestResponseDto>>> GetAllRequestsAsync(RequestStatus? status = null);
-    Task<Result<List<UniversityRequestResponseDto>>> GetAdvisorRequestsAsync(string advisorId, RequestStatus? status = null);
-    Task<Result<UniversityRequestResponseDto>> GetRequestByIdAsync(int requestId);
+    Task<Result<PaginatedList<UniversityRequestResponseDto>>> GetMyRequestsAsync(string studentId, RequestStatus? status = null, string? searchColumn = null, string? searchTerm = null, int? pageNumber = null, int? pageSize = null);
+    Task<Result<PaginatedList<UniversityRequestResponseDto>>> GetAllRequestsAsync(RequestStatus? status = null, string? searchColumn = null, string? searchTerm = null, int? pageNumber = null, int? pageSize = null);
+    Task<Result<PaginatedList<UniversityRequestResponseDto>>> GetAdvisorRequestsAsync(string advisorId, RequestStatus? status = null, string? searchColumn = null, string? searchTerm = null, int? pageNumber = null, int? pageSize = null);
+    Task<Result<UniversityRequestResponseDto>> GetRequestByIdAsync(int requestId, string callerUserId, IList<string> callerRoles);
     Task<Result<UniversityRequestResponseDto>> ReviewByAdvisorAsync(int requestId, string advisorId, AdvisorReviewRequestDto dto);
     Task<Result<UniversityRequestResponseDto>> SendRequestToAdministrationAsync(int requestId, SendRequestToAdministrationDto dto, string advisorId);
     Task<Result<UniversityRequestResponseDto>> GetRequestByTokenAsync(string token);
