@@ -20,7 +20,7 @@ public class AdvisorAssignmentsController : ControllerBase
     }
 
     /// <summary>
-    /// Get all students assigned to the currently logged-in Academic Advisor with search & pagination.
+    /// Get all students assigned to the currently logged-in Academic Advisor with search and pagination.
     /// Accessible by: AcademicAdvisor
     /// </summary>
     [HttpGet("my-students")]
@@ -51,7 +51,7 @@ public class AdvisorAssignmentsController : ControllerBase
     }
 
     /// <summary>
-    /// Get all assignments for a specific advisor with search & pagination.
+    /// Get all assignments for a specific advisor with search and pagination.
     /// </summary>
     [HttpGet("advisor/{advisorId}")]
     [Authorize(Roles = $"{AppRoles.SuperAdmin},{AppRoles.CollegeSecretary}")]
@@ -68,7 +68,7 @@ public class AdvisorAssignmentsController : ControllerBase
     }
 
     /// <summary>
-    /// Get all assignments in the system grouped by advisor with search & pagination.
+    /// Get all assignments in the system grouped by advisor with search and pagination.
     /// </summary>
     [HttpGet]
     [Authorize(Roles = $"{AppRoles.SuperAdmin},{AppRoles.CollegeSecretary}")]

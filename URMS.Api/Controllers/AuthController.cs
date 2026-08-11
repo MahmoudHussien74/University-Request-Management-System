@@ -1,11 +1,6 @@
 using System.Security.Claims;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using URMS.Api.Extensions;
 using URMS.Application.Contracts.Identity;
 using URMS.Application.DTOs.Auth;
-using URMS.Domain.Abstractions;
-using URMS.Domain.Constants;
 
 namespace URMS.Api.Controllers;
 
@@ -130,7 +125,7 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Get currently authenticated user details with roles & permissions.
+    /// Get currently authenticated user details with roles and permissions.
     /// </summary>
     [HttpGet("me")]
     [Authorize]

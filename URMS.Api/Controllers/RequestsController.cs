@@ -1,12 +1,7 @@
 using System.Security.Claims;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using URMS.Api.Extensions;
 using URMS.Application.Common.Pagination;
 using URMS.Application.Contracts.Requests;
 using URMS.Application.DTOs.Requests;
-using URMS.Domain.Abstractions;
-using URMS.Domain.Constants;
 using URMS.Domain.Enums;
 using URMS.Infrastructure.PermissionAuthorization;
 

@@ -1,0 +1,12 @@
+global using System;
+global using System.Collections.Generic;
+global using System.Linq;
+global using System.Threading.Tasks;
+global using Microsoft.EntityFrameworkCore;
+global using Microsoft.Extensions.Configuration;
+global using Microsoft.Extensions.DependencyInjection;
+global using URMS.Application.Contracts.Infrastructure;
+global using URMS.Application.Contracts.Persistence;
+global using URMS.Domain.Constants;
+global using URMS.Domain.Entities;
+global using URMS.Infrastructure.Persistence;

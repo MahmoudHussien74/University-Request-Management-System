@@ -1,0 +1,16 @@
+global using System;
+global using System.Collections.Generic;
+global using System.Linq;
+global using System.Threading;
+global using System.Threading.Tasks;
+global using FluentValidation;
+global using Mapster;
+global using Microsoft.EntityFrameworkCore;
+global using URMS.Application.Common.Models;
+global using URMS.Application.Common.Pagination;
+global using URMS.Application.Contracts.Infrastructure;
+global using URMS.Application.Contracts.Persistence;
+global using URMS.Domain.Abstractions;
+global using URMS.Domain.Constants;
+global using URMS.Domain.Entities;
+global using URMS.Domain.Enums;

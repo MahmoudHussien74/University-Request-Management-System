@@ -20,7 +20,7 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
-    /// Get all students pending approval (IsApproved = false) with search & pagination.
+    /// Get all students pending approval (IsApproved = false) with search and pagination.
     /// Accessible by: AcademicAdvisor, CollegeSecretary, SuperAdmin
     /// </summary>
     [HttpGet("pending-students")]
@@ -69,7 +69,7 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
-    /// Get all students with their activation status with search & pagination.
+    /// Get all students with their activation status with search and pagination.
     /// Admin/Secretary see all students; Advisor sees only assigned students.
     /// </summary>
     [HttpGet("students-activation")]
@@ -120,7 +120,7 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
-    /// Get list of all Academic Advisors in the system with search & pagination.
+    /// Get list of all Academic Advisors in the system with search and pagination.
     /// Accessible by: SuperAdmin, CollegeSecretary
     /// </summary>
     [HttpGet("advisors")]
