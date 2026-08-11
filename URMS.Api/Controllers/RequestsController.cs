@@ -24,10 +24,11 @@ public class RequestsController : ControllerBase
     /// </summary>
     [HttpGet("statuses")]
     [AllowAnonymous]
+    [ProducesResponseType(typeof(ApiResponse<IEnumerable<RequestStatusInfoDto>>), StatusCodes.Status200OK)]
     public IActionResult GetRequestStatuses()
     {
         var statuses = _requestService.GetRequestStatuses();
-        return Ok(statuses);
+        return Ok(ApiResponse<IEnumerable<RequestStatusInfoDto>>.Success(statuses));
     }
 
     /// <summary>
@@ -35,6 +36,8 @@ public class RequestsController : ControllerBase
     /// </summary>
     [HttpPost]
     [HasPermission(Permissions.Requests.Create)]
+    [ProducesResponseType(typeof(ApiResponse<UniversityRequestResponseDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateRequest([FromBody] CreateUniversityRequestDto dto)
     {
         var studentId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -43,9 +46,7 @@ public class RequestsController : ControllerBase
 
         var result = await _requestService.CreateRequestAsync(studentId, dto);
 
-        return result.IsSuccess
-            ? CreatedAtAction(nameof(GetRequestById), new { id = result.Value.Id }, result.Value)
-            : result.ToProblem();
+        return result.ToResponse(HttpContext, LocalizationKeys.SuccessDefault);
     }
 
     /// <summary>
@@ -53,6 +54,7 @@ public class RequestsController : ControllerBase
     /// </summary>
     [HttpGet("my")]
     [HasPermission(Permissions.Requests.ViewOwn)]
+    [ProducesResponseType(typeof(ApiResponse<PaginatedList<UniversityRequestResponseDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetMyRequests(
         [FromQuery] RequestStatus? status = null,
         [FromQuery] string? searchColumn = null,

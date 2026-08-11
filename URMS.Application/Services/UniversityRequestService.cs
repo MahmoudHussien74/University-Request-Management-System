@@ -1,12 +1,3 @@
-using System.Globalization;
-using System.Security.Cryptography;
-using System.Text.Json;
-using Microsoft.Extensions.Options;
-using URMS.Application.Contracts.Forms;
-using URMS.Application.Contracts.Requests;
-using URMS.Application.DTOs.Requests;
-using URMS.Domain.Settings;
-
 namespace URMS.Application.Services;
 
 public class UniversityRequestService : IUniversityRequestService

@@ -20,6 +20,8 @@ public class AuthController : ControllerBase
     /// </summary>
     [HttpPost("register")]
     [AllowAnonymous]
+    [ProducesResponseType(typeof(ApiResponse<AuthResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> RegisterStudent([FromBody] RegisterStudentRequest request)
     {
         var result = await _authService.RegisterStudentAsync(request);
@@ -32,6 +34,8 @@ public class AuthController : ControllerBase
     /// </summary>
     [HttpPost("login")]
     [AllowAnonymous]
+    [ProducesResponseType(typeof(ApiResponse<AuthResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
         var result = await _authService.LoginAsync(request);
@@ -48,6 +52,8 @@ public class AuthController : ControllerBase
     /// </summary>
     [HttpPost("refresh-token")]
     [AllowAnonymous]
+    [ProducesResponseType(typeof(ApiResponse<AuthResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest? request)
     {
         var token = request?.Token ?? Request.Cookies[AuthConstants.AccessTokenCookie];
@@ -70,6 +76,7 @@ public class AuthController : ControllerBase
     /// </summary>
     [HttpPost("revoke-token")]
     [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
     public async Task<IActionResult> RevokeToken([FromBody] RefreshTokenRequest? request)
     {
         var refreshToken = request?.RefreshToken ?? Request.Cookies[AuthConstants.RefreshTokenCookie];
@@ -92,6 +99,7 @@ public class AuthController : ControllerBase
     /// </summary>
     [HttpPost("logout")]
     [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Logout()
     {
         var refreshToken = Request.Cookies[AuthConstants.RefreshTokenCookie];
@@ -113,6 +121,8 @@ public class AuthController : ControllerBase
     /// </summary>
     [HttpPost("change-password")]
     [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -129,6 +139,7 @@ public class AuthController : ControllerBase
     /// </summary>
     [HttpGet("me")]
     [Authorize]
+    [ProducesResponseType(typeof(ApiResponse<UserResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetCurrentUser()
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
