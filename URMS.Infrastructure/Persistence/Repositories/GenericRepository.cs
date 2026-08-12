@@ -1,9 +1,6 @@
 using System.Linq.Expressions;
-using Microsoft.EntityFrameworkCore;
 using URMS.Domain.Contracts;
-
 namespace URMS.Infrastructure.Persistence.Repositories;
-
 public class GenericRepository<T> : IGenericRepository<T> where T : class
 {
     protected readonly AppDbContext _context;
