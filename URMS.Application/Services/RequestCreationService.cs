@@ -1,39 +1,29 @@
-using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
 using URMS.Application.Common.Helpers;
-using URMS.Application.Contracts.Forms;
-using URMS.Application.Contracts.Persistence;
-using URMS.Application.Contracts.Requests;
-using URMS.Application.DTOs.Requests;
-using URMS.Domain.Abstractions;
-using URMS.Domain.Constants;
-using URMS.Domain.Entities;
-using URMS.Domain.Enums;
 
 namespace URMS.Application.Services;
 
 public class RequestCreationService : IRequestCreationService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IUniversityRequestRepository _requestRepo;
+    private readonly IFormDefinitionRepository _formRepo;
     private readonly IFormDefinitionService _formService;
 
     public RequestCreationService(
         IUnitOfWork unitOfWork,
+        IUniversityRequestRepository requestRepo,
+        IFormDefinitionRepository formRepo,
         IFormDefinitionService formService)
     {
         _unitOfWork = unitOfWork;
+        _requestRepo = requestRepo;
+        _formRepo = formRepo;
         _formService = formService;
     }
 
     public async Task<Result<UniversityRequestResponseDto>> CreateRequestAsync(string studentId, CreateUniversityRequestDto dto)
     {
-        var userRepo = _unitOfWork.Repository<ApplicationUser>();
-        var requestRepo = _unitOfWork.Repository<UniversityRequest>();
-
-        var student = await userRepo.FindOneAsync(
-            u => u.Id == studentId,
-            q => q.Include(u => u.Student)
-        );
+        var student = await _requestRepo.GetStudentWithProfileAsync(studentId);
 
         if (student is null)
             return Result.Failure<UniversityRequestResponseDto>(RequestErrors.StudentNotFound);
@@ -55,7 +45,7 @@ public class RequestCreationService : IRequestCreationService
         ApplicationUser? advisor = null;
         if (!string.IsNullOrEmpty(advisorId))
         {
-            advisor = await userRepo.GetByIdAsync(advisorId);
+            advisor = await _requestRepo.GetUserByIdAsync(advisorId);
         }
 
         var request = new UniversityRequest
@@ -76,26 +66,17 @@ public class RequestCreationService : IRequestCreationService
             ActionMessage = RequestLogMessages.CreatedByStudent
         });
 
-        await requestRepo.AddAsync(request);
+        await _requestRepo.AddAsync(request);
         await _unitOfWork.CompleteAsync();
 
-        var formRepo = _unitOfWork.Repository<FormDefinition>();
-        request.FormDefinition = await formRepo.GetByIdAsync(request.FormDefinitionId!.Value);
+        request.FormDefinition = await _formRepo.GetByIdAsync(request.FormDefinitionId!.Value);
 
         return Result.Success(request.MapToDto(student, advisor, null));
     }
 
     public async Task<Result<UniversityRequestResponseDto>> WithdrawRequestAsync(int requestId, string studentId)
     {
-        var requestRepo = _unitOfWork.Repository<UniversityRequest>();
-        var request = await requestRepo.FindOneAsync(
-            r => r.Id == requestId,
-            q => q.Include(r => r.Student).ThenInclude(u => u.Student)
-                  .Include(r => r.FormDefinition)
-                  .Include(r => r.Advisor)
-                  .Include(r => r.Administration)
-                  .Include(r => r.HistoryLogs).ThenInclude(l => l.ActionBy)
-        );
+        var request = await _requestRepo.GetByIdWithDetailsAsync(requestId);
 
         if (request is null)
             return Result.Failure<UniversityRequestResponseDto>(RequestErrors.RequestNotFound);

@@ -1,5 +1,3 @@
-using Microsoft.EntityFrameworkCore;
-
 namespace URMS.Application.Common.Pagination;
 
 public class PaginatedList<T>
@@ -19,27 +17,6 @@ public class PaginatedList<T>
         TotalPages = (pageSize.HasValue && pageSize.Value > 0) 
             ? (int)Math.Ceiling(count / (double)pageSize.Value) 
             : 1;
-    }
-
-    public static async Task<PaginatedList<T>> CreateAsync(IQueryable<T> source, int? pageNumber, int? pageSize, CancellationToken cancellationToken = default)
-    {
-        var count = await source.CountAsync(cancellationToken);
-
-        if (!pageNumber.HasValue || !pageSize.HasValue || pageSize <= 0)
-        {
-            var allItems = await source.ToListAsync(cancellationToken);
-            return new PaginatedList<T>(allItems, 1, count, count > 0 ? count : 1);
-        }
-
-        var pNum = pageNumber.Value < 1 ? 1 : pageNumber.Value;
-        var pSize = pageSize.Value;
-
-        var items = await source
-            .Skip((pNum - 1) * pSize)
-            .Take(pSize)
-            .ToListAsync(cancellationToken);
-
-        return new PaginatedList<T>(items, pNum, count, pSize);
     }
 
     public static PaginatedList<T> Create(List<T> sourceItems, int? pageNumber, int? pageSize)

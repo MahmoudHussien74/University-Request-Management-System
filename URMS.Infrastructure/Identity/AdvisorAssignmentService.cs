@@ -12,10 +12,12 @@ namespace URMS.Infrastructure.Identity;
 public class AdvisorAssignmentService : IAdvisorAssignmentService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly AppDbContext _context;
 
-    public AdvisorAssignmentService(IUnitOfWork unitOfWork)
+    public AdvisorAssignmentService(IUnitOfWork unitOfWork, AppDbContext context)
     {
         _unitOfWork = unitOfWork;
+        _context = context;
     }
 
     public async Task<Result<int>> BulkAssignAsync(BulkAssignStudentsDto dto)
@@ -34,14 +36,14 @@ public class AdvisorAssignmentService : IAdvisorAssignmentService
             return Result.Failure<int>(new Error("Advisor.NotFound", "Advisor not found.", 404));
 
         // ─── Batch fetch existing assignments to eliminate N+1 loop ───
-        var existingAssignedCodes = (await assignmentRepo.GetQueryable()
+        var existingAssignedCodes = (await _context.Set<AdvisorStudentAssignment>()
             .AsNoTracking()
             .Where(a => dto.UniversityCodes.Contains(a.UniversityCode))
             .Select(a => a.UniversityCode)
             .ToListAsync()).ToHashSet();
 
         // ─── Batch fetch registered students to eliminate N+1 loop ───
-        var registeredStudents = await studentRepo.GetQueryable()
+        var registeredStudents = await _context.Set<Student>()
             .Where(s => dto.UniversityCodes.Contains(s.UniversityCode) && s.AcademicAdvisorId == null)
             .ToListAsync();
 
@@ -87,14 +89,14 @@ public class AdvisorAssignmentService : IAdvisorAssignmentService
         if (advisor is null || advisor.Advisor is null)
             return Result.Failure<AdvisorAssignmentsGroupDto>(new Error("Advisor.NotFound", "Advisor not found.", 404));
 
-        var assignments = await assignmentRepo.GetQueryable()
+        var assignments = await _context.Set<AdvisorStudentAssignment>()
             .AsNoTracking()
             .Where(a => a.AdvisorId == advisorId)
             .ToListAsync();
 
         var codes = assignments.Select(a => a.UniversityCode).ToList();
 
-        var registeredStudents = await studentRepo.GetQueryable()
+        var registeredStudents = await _context.Set<Student>()
             .AsNoTracking()
             .Include(s => s.User)
             .Where(s => codes.Contains(s.UniversityCode))
@@ -160,7 +162,7 @@ public class AdvisorAssignmentService : IAdvisorAssignmentService
         var assignmentRepo = _unitOfWork.Repository<AdvisorStudentAssignment>();
         var studentRepo = _unitOfWork.Repository<Student>();
 
-        var advisors = await userRepo.GetQueryable()
+        var advisors = await _context.Set<ApplicationUser>()
             .AsNoTracking()
             .Include(u => u.Advisor)
             .Where(u => u.UserType == URMS.Domain.Enums.UserType.AcademicAdvisor)
@@ -172,7 +174,7 @@ public class AdvisorAssignmentService : IAdvisorAssignmentService
 
         var allCodes = assignments.Select(a => a.UniversityCode).Distinct().ToList();
 
-        var registeredStudents = await studentRepo.GetQueryable()
+        var registeredStudents = await _context.Set<Student>()
             .AsNoTracking()
             .Include(s => s.User)
             .Where(s => allCodes.Contains(s.UniversityCode))
@@ -281,7 +283,7 @@ public class AdvisorAssignmentService : IAdvisorAssignmentService
         var studentRepo = _unitOfWork.Repository<Student>();
 
         // 1. Fetch all Advisors (ApplicationUser where UserType == AcademicAdvisor)
-        var advisors = await userRepo.GetQueryable()
+        var advisors = await _context.Set<ApplicationUser>()
             .AsNoTracking()
             .Where(u => u.UserType == URMS.Domain.Enums.UserType.AcademicAdvisor)
             .ToListAsync();
@@ -436,14 +438,14 @@ public class AdvisorAssignmentService : IAdvisorAssignmentService
         if (advisor is null)
             return Result.Failure<AdvisorMyStudentsResponseDto>(new Error("Advisor.NotFound", "Advisor not found.", 404));
 
-        var assignments = await assignmentRepo.GetQueryable()
+        var assignments = await _context.Set<AdvisorStudentAssignment>()
             .AsNoTracking()
             .Where(a => a.AdvisorId == advisorUserId)
             .ToListAsync();
 
         var codes = assignments.Select(a => a.UniversityCode).ToList();
 
-        var registeredStudents = await studentRepo.GetQueryable()
+        var registeredStudents = await _context.Set<Student>()
             .AsNoTracking()
             .Include(s => s.User)
             .Where(s => codes.Contains(s.UniversityCode))

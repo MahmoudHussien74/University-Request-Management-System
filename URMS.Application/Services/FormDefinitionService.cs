@@ -5,16 +5,16 @@ namespace URMS.Application.Services;
 public class FormDefinitionService : IFormDefinitionService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IFormDefinitionRepository _formRepo;
 
-    public FormDefinitionService(IUnitOfWork unitOfWork)
+    public FormDefinitionService(IUnitOfWork unitOfWork, IFormDefinitionRepository formRepo)
     {
         _unitOfWork = unitOfWork;
+        _formRepo = formRepo;
     }
 
     public async Task<Result<FormDefinitionResponseDto>> CreateFormAsync(CreateFormDefinitionDto dto, string createdBy)
     {
-        var formRepo = _unitOfWork.Repository<FormDefinition>();
-
         var form = new FormDefinition
         {
             TitleAr = dto.TitleAr,
@@ -46,7 +46,7 @@ public class FormDefinitionService : IFormDefinitionService
             }
         }
 
-        await formRepo.AddAsync(form);
+        await _formRepo.AddAsync(form);
         await _unitOfWork.CompleteAsync();
 
         return Result.Success(MapToResponseDto(form, 0));
@@ -54,13 +54,7 @@ public class FormDefinitionService : IFormDefinitionService
 
     public async Task<Result<FormDefinitionResponseDto>> UpdateFormAsync(int id, UpdateFormDefinitionDto dto, string updatedBy)
     {
-        var formRepo = _unitOfWork.Repository<FormDefinition>();
-        var fieldRepo = _unitOfWork.Repository<FormFieldDefinition>();
-
-        var form = await formRepo.FindOneAsync(
-            f => f.Id == id && !f.IsDeleted,
-            q => q.Include(f => f.Fields).Include(f => f.Requests)
-        );
+        var form = await _formRepo.GetByIdWithDetailsAsync(id);
 
         if (form is null)
             return Result.Failure<FormDefinitionResponseDto>(FormErrors.FormNotFound);
@@ -103,12 +97,7 @@ public class FormDefinitionService : IFormDefinitionService
 
     public async Task<Result<FormDefinitionResponseDto>> ToggleFormStatusAsync(int id, ToggleFormStatusDto dto)
     {
-        var formRepo = _unitOfWork.Repository<FormDefinition>();
-
-        var form = await formRepo.FindOneAsync(
-            f => f.Id == id && !f.IsDeleted,
-            q => q.Include(f => f.Fields).Include(f => f.Requests)
-        );
+        var form = await _formRepo.GetByIdWithDetailsAsync(id);
 
         if (form is null)
             return Result.Failure<FormDefinitionResponseDto>(FormErrors.FormNotFound);
@@ -132,9 +121,7 @@ public class FormDefinitionService : IFormDefinitionService
 
     public async Task<Result<bool>> DeleteFormAsync(int id)
     {
-        var formRepo = _unitOfWork.Repository<FormDefinition>();
-
-        var form = await formRepo.GetByIdAsync(id);
+        var form = await _formRepo.GetByIdAsync(id);
 
         if (form is null || form.IsDeleted)
             return Result.Failure<bool>(FormErrors.FormNotFound);
@@ -150,12 +137,7 @@ public class FormDefinitionService : IFormDefinitionService
 
     public async Task<Result<FormFieldResponseDto>> AddFieldToFormAsync(int formId, CreateFormFieldDto dto)
     {
-        var formRepo = _unitOfWork.Repository<FormDefinition>();
-
-        var form = await formRepo.FindOneAsync(
-            f => f.Id == formId && !f.IsDeleted,
-            q => q.Include(f => f.Fields)
-        );
+        var form = await _formRepo.GetByIdWithFieldsAsync(formId);
 
         if (form is null)
             return Result.Failure<FormFieldResponseDto>(FormErrors.FormNotFound);
@@ -206,11 +188,7 @@ public class FormDefinitionService : IFormDefinitionService
 
     public async Task<Result<bool>> DeleteFormFieldAsync(int formId, int fieldId)
     {
-        var formRepo = _unitOfWork.Repository<FormDefinition>();
-        var form = await formRepo.FindOneAsync(
-            f => f.Id == formId && !f.IsDeleted,
-            q => q.Include(f => f.Fields)
-        );
+        var form = await _formRepo.GetByIdWithFieldsAsync(formId);
 
         if (form is null)
             return Result.Failure<bool>(FormErrors.FormNotFound);
@@ -228,12 +206,7 @@ public class FormDefinitionService : IFormDefinitionService
 
     public async Task<Result<FormDefinitionResponseDto>> GetFormByIdAsync(int id)
     {
-        var formRepo = _unitOfWork.Repository<FormDefinition>();
-
-        var form = await formRepo.FindOneAsync(
-            f => f.Id == id && !f.IsDeleted,
-            q => q.Include(f => f.Fields.OrderBy(field => field.Order)).Include(f => f.Requests)
-        );
+        var form = await _formRepo.GetByIdWithDetailsAsync(id);
 
         if (form is null)
             return Result.Failure<FormDefinitionResponseDto>(FormErrors.FormNotFound);
@@ -243,66 +216,31 @@ public class FormDefinitionService : IFormDefinitionService
 
     public async Task<Result<List<FormDefinitionResponseDto>>> GetAllAdminFormsAsync()
     {
-        var formRepo = _unitOfWork.Repository<FormDefinition>();
-
-        var forms = await formRepo.FindAllAsync(
-            f => !f.IsDeleted,
-            q => q.Include(f => f.Fields.OrderBy(field => field.Order)).Include(f => f.Requests),
-            orderBy: q => q.OrderByDescending(f => f.CreatedAt)
-        );
+        var forms = await _formRepo.GetAllForAdminAsync();
 
         return Result.Success(forms.Select(f => MapToResponseDto(f, f.Requests?.Count ?? 0)).ToList());
     }
 
     public async Task<Result<List<FormDefinitionResponseDto>>> GetActiveStudentFormsAsync()
     {
-        var formRepo = _unitOfWork.Repository<FormDefinition>();
         var now = DateTime.UtcNow;
-
-        var forms = await formRepo.FindAllAsync(
-            f => f.IsActive && !f.IsDeleted &&
-                 (!f.StartDate.HasValue || f.StartDate.Value <= now) &&
-                 (!f.EndDate.HasValue || f.EndDate.Value >= now),
-            q => q.Include(f => f.Fields.OrderBy(field => field.Order)).Include(f => f.Requests),
-            orderBy: q => q.OrderByDescending(f => f.CreatedAt)
-        );
+        var forms = await _formRepo.GetActiveForStudentsAsync(now);
 
         return Result.Success(forms.Select(f => MapToResponseDto(f, f.Requests?.Count ?? 0)).ToList());
     }
 
     public async Task<Result<List<FormSummaryDto>>> GetLandingPageFormsAsync()
     {
-        var formRepo = _unitOfWork.Repository<FormDefinition>();
         var now = DateTime.UtcNow;
-
-        var summaries = await formRepo.GetQueryable()
-            .AsNoTracking()
-            .Where(f => !f.IsDeleted &&
-                        f.IsActive &&
-                        (!f.StartDate.HasValue || f.StartDate.Value <= now) &&
-                        (!f.EndDate.HasValue || f.EndDate.Value >= now))
-            .Select(f => new FormSummaryDto(
-                f.Id,
-                f.TitleAr,
-                f.TitleEn,
-                f.Description,
-                f.StartDate,
-                f.EndDate,
-                f.Requests.Count))
-            .ToListAsync();
-
+        var summaries = await _formRepo.GetActiveSummariesAsync(now);
         return Result.Success(summaries);
     }
 
     public async Task<Result<bool>> ValidateSubmissionAnswersAsync(int formDefinitionId, Dictionary<string, string>? answers)
     {
-        var formRepo = _unitOfWork.Repository<FormDefinition>();
         var now = DateTime.UtcNow;
 
-        var form = await formRepo.FindOneAsync(
-            f => f.Id == formDefinitionId && !f.IsDeleted,
-            q => q.Include(f => f.Fields)
-        );
+        var form = await _formRepo.GetByIdWithFieldsAsync(formDefinitionId);
 
         if (form is null)
             return Result.Failure<bool>(FormErrors.FormNotFound);

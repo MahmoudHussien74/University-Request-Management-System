@@ -146,6 +146,10 @@ public static class DependencyInjection
         services.AddScoped(typeof(URMS.Domain.Contracts.IGenericRepository<>), typeof(URMS.Infrastructure.Persistence.Repositories.GenericRepository<>));
         services.AddScoped<URMS.Application.Contracts.Persistence.IUnitOfWork, URMS.Infrastructure.Persistence.Repositories.UnitOfWork>();
 
+        // ─── Domain-Specific Repositories ───
+        services.AddScoped<URMS.Application.Contracts.Persistence.IUniversityRequestRepository, URMS.Infrastructure.Persistence.Repositories.UniversityRequestRepository>();
+        services.AddScoped<URMS.Application.Contracts.Persistence.IFormDefinitionRepository, URMS.Infrastructure.Persistence.Repositories.FormDefinitionRepository>();
+
         // ─── 5. Custom Auth, JWT, Permission, Request & Localization Services ───
         services.AddHttpContextAccessor();
         services.AddLocalization();

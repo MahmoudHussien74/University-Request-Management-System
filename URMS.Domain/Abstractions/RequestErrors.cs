@@ -89,6 +89,12 @@ public static class UserErrors
     public static readonly Error RefreshTokenInactive =
         new("Auth.RefreshTokenInactive", "Refresh token is inactive or expired.", 401);
 
+    public static readonly Error CannotDeleteSelf =
+        new("User.CannotDeleteSelf", "لا يمكنك حذف حسابك الشخصي.", 400);
+
+    public static Error DeleteFailed(string details) =>
+        new("User.DeleteFailed", $"فشل حذف المستخدم: {details}", 400);
+
     public static Error RegistrationFailed(string details) =>
         new("Auth.RegistrationFailed", $"Student registration failed: {details}", 400);
 

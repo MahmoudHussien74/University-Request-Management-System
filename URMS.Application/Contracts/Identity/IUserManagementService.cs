@@ -52,4 +52,9 @@ public interface IUserManagementService
     /// Get all Academic Advisors in the system, supporting optional search & pagination.
     /// </summary>
     Task<Result<PaginatedList<AdvisorDto>>> GetAllAdvisorsAsync(string? searchColumn = null, string? searchTerm = null, int? pageNumber = null, int? pageSize = null);
+
+    /// <summary>
+    /// Delete a user account by userId (SuperAdmin operation).
+    /// </summary>
+    Task<Result> DeleteUserAsync(string userId, string callerUserId);
 }

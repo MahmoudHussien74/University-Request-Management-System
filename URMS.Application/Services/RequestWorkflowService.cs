@@ -1,30 +1,24 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using URMS.Application.Common.Helpers;
-using URMS.Application.Contracts.Persistence;
-using URMS.Application.Contracts.Requests;
-using URMS.Application.DTOs.Requests;
-using URMS.Domain.Abstractions;
-using URMS.Domain.Constants;
-using URMS.Domain.Entities;
-using URMS.Domain.Enums;
 
 namespace URMS.Application.Services;
 
 public class RequestWorkflowService : IRequestWorkflowService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IUniversityRequestRepository _requestRepo;
     private readonly IOtpService _otpService;
     private readonly IRequestNotificationService _notificationService;
     private readonly EmailSettings _emailSettings;
 
     public RequestWorkflowService(
         IUnitOfWork unitOfWork,
+        IUniversityRequestRepository requestRepo,
         IOtpService otpService,
         IRequestNotificationService notificationService,
         IOptions<EmailSettings> emailOptions)
     {
         _unitOfWork = unitOfWork;
+        _requestRepo = requestRepo;
         _otpService = otpService;
         _notificationService = notificationService;
         _emailSettings = emailOptions.Value;
@@ -32,14 +26,7 @@ public class RequestWorkflowService : IRequestWorkflowService
 
     public async Task<Result<UniversityRequestResponseDto>> ReviewByAdvisorAsync(int requestId, string advisorId, AdvisorReviewRequestDto dto)
     {
-        var requestRepo = _unitOfWork.Repository<UniversityRequest>();
-        var userRepo = _unitOfWork.Repository<ApplicationUser>();
-
-        var request = await requestRepo.FindOneAsync(
-            r => r.Id == requestId,
-            q => q.Include(r => r.Student).ThenInclude(u => u.Student)
-                  .Include(r => r.HistoryLogs).ThenInclude(l => l.ActionBy)
-        );
+        var request = await _requestRepo.GetForWorkflowAsync(requestId);
 
         if (request is null)
             return Result.Failure<UniversityRequestResponseDto>(RequestErrors.RequestNotFound);
@@ -73,22 +60,13 @@ public class RequestWorkflowService : IRequestWorkflowService
 
         await _unitOfWork.CompleteAsync();
 
-        var advisor = await userRepo.GetByIdAsync(advisorId);
+        var advisor = await _requestRepo.GetUserByIdAsync(advisorId);
         return Result.Success(request.MapToDto(request.Student, advisor, null));
     }
 
     public async Task<Result<UniversityRequestResponseDto>> SendRequestToAdministrationAsync(int requestId, SendRequestToAdministrationDto dto, string advisorId)
     {
-        var requestRepo = _unitOfWork.Repository<UniversityRequest>();
-        var userRepo = _unitOfWork.Repository<ApplicationUser>();
-
-        var request = await requestRepo.FindOneAsync(
-            r => r.Id == requestId,
-            q => q.Include(r => r.Student).ThenInclude(u => u.Student)
-                  .Include(r => r.FormDefinition!).ThenInclude(f => f.Fields)
-                  .Include(r => r.Advisor)
-                  .Include(r => r.HistoryLogs).ThenInclude(l => l.ActionBy)
-        );
+        var request = await _requestRepo.GetForAdministrationSendAsync(requestId);
 
         if (request is null)
             return Result.Failure<UniversityRequestResponseDto>(RequestErrors.RequestNotFound);
@@ -136,21 +114,13 @@ public class RequestWorkflowService : IRequestWorkflowService
 
         await _unitOfWork.CompleteAsync();
 
-        var advisor = await userRepo.GetByIdAsync(advisorId);
+        var advisor = await _requestRepo.GetUserByIdAsync(advisorId);
         return Result.Success(request.MapToDto(request.Student, advisor, null));
     }
 
     public async Task<Result<UniversityRequestResponseDto>> RespondExternalRequestAsync(string token, ExternalAdministrationResponseDto dto)
     {
-        var requestRepo = _unitOfWork.Repository<UniversityRequest>();
-
-        var request = await requestRepo.FindOneAsync(
-            r => r.ConfirmationToken == token,
-            q => q.Include(r => r.Student).ThenInclude(u => u.Student)
-                  .Include(r => r.FormDefinition)
-                  .Include(r => r.Advisor)
-                  .Include(r => r.HistoryLogs).ThenInclude(l => l.ActionBy)
-        );
+        var request = await _requestRepo.GetByTokenForWorkflowAsync(token);
 
         if (request is null)
             return Result.Failure<UniversityRequestResponseDto>(RequestErrors.RequestNotFound);
@@ -204,15 +174,7 @@ public class RequestWorkflowService : IRequestWorkflowService
 
     public async Task<Result<UniversityRequestResponseDto>> ConfirmByAdministrationAsync(int requestId, string administrationId, AdministrationConfirmRequestDto dto)
     {
-        var requestRepo = _unitOfWork.Repository<UniversityRequest>();
-        var userRepo = _unitOfWork.Repository<ApplicationUser>();
-
-        var request = await requestRepo.FindOneAsync(
-            r => r.Id == requestId,
-            q => q.Include(r => r.Student).ThenInclude(u => u.Student)
-                  .Include(r => r.Advisor)
-                  .Include(r => r.HistoryLogs).ThenInclude(l => l.ActionBy)
-        );
+        var request = await _requestRepo.GetForWorkflowAsync(requestId);
 
         if (request is null)
             return Result.Failure<UniversityRequestResponseDto>(RequestErrors.RequestNotFound);
@@ -247,22 +209,13 @@ public class RequestWorkflowService : IRequestWorkflowService
 
         await _unitOfWork.CompleteAsync();
 
-        var admin = await userRepo.GetByIdAsync(administrationId);
+        var admin = await _requestRepo.GetUserByIdAsync(administrationId);
         return Result.Success(request.MapToDto(request.Student, request.Advisor, admin));
     }
 
     public async Task<Result<UniversityRequestResponseDto>> OverrideStatusByAdminAsync(int requestId, string adminId, AdminOverrideRequestDto dto)
     {
-        var requestRepo = _unitOfWork.Repository<UniversityRequest>();
-        var userRepo = _unitOfWork.Repository<ApplicationUser>();
-
-        var request = await requestRepo.FindOneAsync(
-            r => r.Id == requestId,
-            q => q.Include(r => r.Student).ThenInclude(u => u.Student)
-                  .Include(r => r.Advisor)
-                  .Include(r => r.Administration)
-                  .Include(r => r.HistoryLogs).ThenInclude(l => l.ActionBy)
-        );
+        var request = await _requestRepo.GetForWorkflowAsync(requestId);
 
         if (request is null)
             return Result.Failure<UniversityRequestResponseDto>(RequestErrors.RequestNotFound);
@@ -306,7 +259,7 @@ public class RequestWorkflowService : IRequestWorkflowService
 
         await _unitOfWork.CompleteAsync();
 
-        var adminUser = await userRepo.GetByIdAsync(adminId);
+        var adminUser = await _requestRepo.GetUserByIdAsync(adminId);
         return Result.Success(request.MapToDto(request.Student, request.Advisor ?? adminUser, request.Administration ?? adminUser));
     }
 }

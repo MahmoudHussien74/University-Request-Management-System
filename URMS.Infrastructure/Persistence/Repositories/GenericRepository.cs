@@ -53,9 +53,50 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
         return await query.ToListAsync();
     }
 
+    public async Task<(IEnumerable<T> Items, int TotalCount)> FindPagedAsync(
+        Expression<Func<T, bool>>? predicate = null,
+        Func<IQueryable<T>, IQueryable<T>>? includeAction = null,
+        Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null,
+        int? pageNumber = null,
+        int? pageSize = null)
+    {
+        IQueryable<T> query = _dbSet;
+
+        if (includeAction != null)
+            query = includeAction(query);
+
+        if (predicate != null)
+            query = query.Where(predicate);
+
+        if (orderBy != null)
+            query = orderBy(query);
+
+        var totalCount = await query.CountAsync();
+
+        if (pageSize.HasValue && pageSize > 0)
+        {
+            var pNum = pageNumber.HasValue && pageNumber > 0 ? pageNumber.Value : 1;
+            query = query.Skip((pNum - 1) * pageSize.Value).Take(pageSize.Value);
+        }
+
+        var items = await query.ToListAsync();
+        return (items, totalCount);
+    }
+
+    public async Task<int> CountAsync(Expression<Func<T, bool>>? predicate = null)
+    {
+        return predicate != null
+            ? await _dbSet.CountAsync(predicate)
+            : await _dbSet.CountAsync();
+    }
+
     public async Task AddAsync(T entity) => await _dbSet.AddAsync(entity);
 
-    public IQueryable<T> GetQueryable() => _dbSet;
+    /// <summary>
+    /// Protected: available to specialized repositories in Infrastructure only.
+    /// NOT exposed via IGenericRepository interface.
+    /// </summary>
+    protected IQueryable<T> GetQueryable() => _dbSet;
 
     public void Update(T entity) => _dbSet.Update(entity);
 

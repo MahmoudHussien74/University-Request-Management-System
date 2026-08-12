@@ -134,4 +134,16 @@ public class UsersController : ControllerBase
         var result = await _userManagementService.GetAllAdvisorsAsync(searchColumn, searchTerm, pageNumber, pageSize);
         return result.ToResponse(HttpContext);
     }
+
+    /// <summary>
+    /// Delete a user account by userId.
+    /// Accessible by: SuperAdmin
+    /// </summary>
+    [HttpDelete("{userId}")]
+    [HasPermission(Permissions.Users.Delete)]
+    public async Task<IActionResult> DeleteUser(string userId)
+    {
+        var result = await _userManagementService.DeleteUserAsync(userId, User.GetUserId());
+        return result.ToResponse(HttpContext);
+    }
 }

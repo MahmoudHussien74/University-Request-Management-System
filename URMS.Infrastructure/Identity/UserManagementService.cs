@@ -1,13 +1,9 @@
 using Mapster;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using URMS.Application.Common.Pagination;
 using URMS.Application.Contracts.Identity;
-using URMS.Application.Contracts.Persistence;
 using URMS.Application.DTOs.Auth;
 using URMS.Domain.Abstractions;
-using URMS.Domain.Constants;
-using URMS.Domain.Entities;
 
 namespace URMS.Infrastructure.Identity;
 
@@ -27,6 +23,8 @@ public class UserManagementService : IUserManagementService
         _rolePermissionService = rolePermissionService;
     }
 
+    #region Student Operations
+
     public async Task<Result<PaginatedList<PendingStudentDto>>> GetPendingStudentsAsync(
         string callerUserId,
         IList<string> callerRoles,
@@ -35,77 +33,72 @@ public class UserManagementService : IUserManagementService
         int? pageNumber = null,
         int? pageSize = null)
     {
-        var userRepo = _unitOfWork.Repository<ApplicationUser>();
         var isAdvisor = callerRoles.Contains(AppRoles.AcademicAdvisor);
 
-        var query = userRepo.GetQueryable()
+        var query = _userManager.Users
             .AsNoTracking()
-            .Include(u => u.Student)
             .Where(u => !u.IsApproved && u.IsActive && u.Student != null &&
                         (!isAdvisor || u.Student.AcademicAdvisorId == callerUserId));
 
-        if (!string.IsNullOrWhiteSpace(searchTerm))
-        {
-            var term = searchTerm.Trim().ToLower();
-            var col = searchColumn?.Trim().ToLower();
-
-            if (col == "name")
-            {
-                query = query.Where(u =>
-                    u.FirstNameAr.ToLower().Contains(term) || u.LastNameAr.ToLower().Contains(term) ||
-                    (u.SecondNameAr != null && u.SecondNameAr.ToLower().Contains(term)) ||
-                    (u.ThirdNameAr != null && u.ThirdNameAr.ToLower().Contains(term)) ||
-                    u.FirstNameEn.ToLower().Contains(term) || u.LastNameEn.ToLower().Contains(term) ||
-                    (u.SecondNameEn != null && u.SecondNameEn.ToLower().Contains(term)) ||
-                    (u.ThirdNameEn != null && u.ThirdNameEn.ToLower().Contains(term))
-                );
-            }
-            else if (col == "email")
-            {
-                query = query.Where(u => u.Email != null && u.Email.ToLower().Contains(term));
-            }
-            else if (col == "code" || col == "universitycode")
-            {
-                query = query.Where(u => u.Student != null && u.Student.UniversityCode.ToLower().Contains(term));
-            }
-            else if (col == "nationalid")
-            {
-                query = query.Where(u => u.Student != null && u.Student.NationalId.ToLower().Contains(term));
-            }
-            else
-            {
-                query = query.Where(u =>
-                    u.FirstNameAr.ToLower().Contains(term) || u.LastNameAr.ToLower().Contains(term) ||
-                    (u.SecondNameAr != null && u.SecondNameAr.ToLower().Contains(term)) ||
-                    (u.ThirdNameAr != null && u.ThirdNameAr.ToLower().Contains(term)) ||
-                    u.FirstNameEn.ToLower().Contains(term) || u.LastNameEn.ToLower().Contains(term) ||
-                    (u.SecondNameEn != null && u.SecondNameEn.ToLower().Contains(term)) ||
-                    (u.ThirdNameEn != null && u.ThirdNameEn.ToLower().Contains(term)) ||
-                    (u.Email != null && u.Email.ToLower().Contains(term)) ||
-                    (u.Student != null && u.Student.UniversityCode.ToLower().Contains(term)) ||
-                    (u.Student != null && u.Student.NationalId.ToLower().Contains(term))
-                );
-            }
-        }
-
+        query = ApplyStudentSearch(query, searchColumn, searchTerm);
         query = query.OrderByDescending(u => u.CreatedAt);
 
         var totalCount = await query.CountAsync();
 
-        List<ApplicationUser> pendingUsers;
+        List<PendingStudentDto> pendingStudents;
         if (pageSize.HasValue && pageSize > 0)
         {
             var pNum = pageNumber.HasValue && pageNumber > 0 ? pageNumber.Value : 1;
-            pendingUsers = await query.Skip((pNum - 1) * pageSize.Value).Take(pageSize.Value).ToListAsync();
+            pendingStudents = await query.ProjectToType<PendingStudentDto>()
+                .Skip((pNum - 1) * pageSize.Value)
+                .Take(pageSize.Value)
+                .ToListAsync();
         }
         else
         {
-            pendingUsers = await query.ToListAsync();
+            pendingStudents = await query.ProjectToType<PendingStudentDto>().ToListAsync();
         }
 
-        var pendingStudents = pendingUsers.Adapt<List<PendingStudentDto>>();
-
         var paginatedResult = new PaginatedList<PendingStudentDto>(pendingStudents, pageNumber, totalCount, pageSize);
+
+        return Result.Success(paginatedResult);
+    }
+
+    public async Task<Result<PaginatedList<StudentActivationDto>>> GetAllStudentsForActivationAsync(
+        string callerUserId,
+        IList<string> callerRoles,
+        string? searchColumn = null,
+        string? searchTerm = null,
+        int? pageNumber = null,
+        int? pageSize = null)
+    {
+        var isAdvisor = callerRoles.Contains(AppRoles.AcademicAdvisor);
+
+        var query = _userManager.Users
+            .AsNoTracking()
+            .Where(u => u.Student != null &&
+                        (!isAdvisor || u.Student.AcademicAdvisorId == callerUserId));
+
+        query = ApplyStudentSearch(query, searchColumn, searchTerm);
+        query = query.OrderByDescending(u => u.CreatedAt);
+
+        var totalCount = await query.CountAsync();
+
+        List<StudentActivationDto> students;
+        if (pageSize.HasValue && pageSize > 0)
+        {
+            var pNum = pageNumber.HasValue && pageNumber > 0 ? pageNumber.Value : 1;
+            students = await query.ProjectToType<StudentActivationDto>()
+                .Skip((pNum - 1) * pageSize.Value)
+                .Take(pageSize.Value)
+                .ToListAsync();
+        }
+        else
+        {
+            students = await query.ProjectToType<StudentActivationDto>().ToListAsync();
+        }
+
+        var paginatedResult = new PaginatedList<StudentActivationDto>(students, pageNumber, totalCount, pageSize);
 
         return Result.Success(paginatedResult);
     }
@@ -145,6 +138,74 @@ public class UserManagementService : IUserManagementService
         ));
     }
 
+    public async Task<Result> UpdateStudentAsync(string userId, UpdateStudentRequest request)
+    {
+        var userRepo = _unitOfWork.Repository<ApplicationUser>();
+
+        var user = await userRepo.FindOneAsync(
+            u => u.Id == userId,
+            q => q.Include(u => u.Student)
+        );
+
+        if (user is null)
+            return Result.Failure(UserErrors.UserNotFound);
+
+        // ─── Uniqueness checks ───
+        if (!string.Equals(user.Email, request.Email, StringComparison.OrdinalIgnoreCase))
+        {
+            var existingEmail = await userRepo.FindOneAsync(u => u.Email == request.Email && u.Id != userId);
+            if (existingEmail is not null)
+                return Result.Failure(UserErrors.DuplicateEmail);
+        }
+
+        if (user.Student is not null &&
+            !string.Equals(user.Student.UniversityCode, request.UniversityCode, StringComparison.OrdinalIgnoreCase))
+        {
+            var studentRepo = _unitOfWork.Repository<Student>();
+            var existingCode = await studentRepo.FindOneAsync(s => s.UniversityCode == request.UniversityCode && s.UserId != userId);
+            if (existingCode is not null)
+                return Result.Failure(UserErrors.DuplicateUniversityCode);
+        }
+
+        if (user.Student is not null &&
+            !string.Equals(user.Student.NationalId, request.NationalId, StringComparison.OrdinalIgnoreCase))
+        {
+            var studentRepo = _unitOfWork.Repository<Student>();
+            var existingNationalId = await studentRepo.FindOneAsync(s => s.NationalId == request.NationalId && s.UserId != userId);
+            if (existingNationalId is not null)
+                return Result.Failure(UserErrors.DuplicateNationalId);
+        }
+
+        var (firstAr, secondAr, thirdAr, lastAr) = SplitFullName(request.FullNameAr);
+        user.FirstNameAr = firstAr;
+        user.SecondNameAr = secondAr;
+        user.ThirdNameAr = thirdAr;
+        user.LastNameAr = lastAr;
+
+        var (firstEn, secondEn, thirdEn, lastEn) = SplitFullName(request.FullNameEn);
+        user.FirstNameEn = firstEn;
+        user.SecondNameEn = secondEn;
+        user.ThirdNameEn = thirdEn;
+        user.LastNameEn = lastEn;
+        user.Email = request.Email;
+        user.UserName = request.Email;
+        user.NormalizedEmail = request.Email.ToUpperInvariant();
+        user.NormalizedUserName = request.Email.ToUpperInvariant();
+        user.PhoneNumber = request.PhoneNumber;
+        user.AlternatePhone = request.AlternatePhone;
+
+        if (user.Student is not null)
+        {
+            user.Student.UniversityCode = request.UniversityCode;
+            user.Student.NationalId = request.NationalId;
+            user.Student.Address = request.Address;
+        }
+
+        await _userManager.UpdateAsync(user);
+
+        return Result.Success();
+    }
+
     public async Task<Result> DeactivateAccountAsync(string userId)
     {
         var user = await _userManager.FindByIdAsync(userId);
@@ -169,162 +230,9 @@ public class UserManagementService : IUserManagementService
         return Result.Success();
     }
 
-    public async Task<Result<PaginatedList<StudentActivationDto>>> GetAllStudentsForActivationAsync(
-        string callerUserId,
-        IList<string> callerRoles,
-        string? searchColumn = null,
-        string? searchTerm = null,
-        int? pageNumber = null,
-        int? pageSize = null)
-    {
-        var userRepo = _unitOfWork.Repository<ApplicationUser>();
-        var isAdvisor = callerRoles.Contains(AppRoles.AcademicAdvisor);
+    #endregion
 
-        var query = userRepo.GetQueryable()
-            .AsNoTracking()
-            .Include(u => u.Student)
-            .Where(u => u.Student != null &&
-                        (!isAdvisor || u.Student.AcademicAdvisorId == callerUserId));
-
-        if (!string.IsNullOrWhiteSpace(searchTerm))
-        {
-            var term = searchTerm.Trim().ToLower();
-            var col = searchColumn?.Trim().ToLower();
-
-            if (col == "name")
-            {
-                query = query.Where(u =>
-                    u.FirstNameAr.ToLower().Contains(term) || u.LastNameAr.ToLower().Contains(term) ||
-                    (u.SecondNameAr != null && u.SecondNameAr.ToLower().Contains(term)) ||
-                    (u.ThirdNameAr != null && u.ThirdNameAr.ToLower().Contains(term)) ||
-                    u.FirstNameEn.ToLower().Contains(term) || u.LastNameEn.ToLower().Contains(term) ||
-                    (u.SecondNameEn != null && u.SecondNameEn.ToLower().Contains(term)) ||
-                    (u.ThirdNameEn != null && u.ThirdNameEn.ToLower().Contains(term))
-                );
-            }
-            else if (col == "email")
-            {
-                query = query.Where(u => u.Email != null && u.Email.ToLower().Contains(term));
-            }
-            else if (col == "code" || col == "universitycode")
-            {
-                query = query.Where(u => u.Student != null && u.Student.UniversityCode.ToLower().Contains(term));
-            }
-            else if (col == "nationalid")
-            {
-                query = query.Where(u => u.Student != null && u.Student.NationalId.ToLower().Contains(term));
-            }
-            else
-            {
-                query = query.Where(u =>
-                    u.FirstNameAr.ToLower().Contains(term) || u.LastNameAr.ToLower().Contains(term) ||
-                    (u.SecondNameAr != null && u.SecondNameAr.ToLower().Contains(term)) ||
-                    (u.ThirdNameAr != null && u.ThirdNameAr.ToLower().Contains(term)) ||
-                    u.FirstNameEn.ToLower().Contains(term) || u.LastNameEn.ToLower().Contains(term) ||
-                    (u.SecondNameEn != null && u.SecondNameEn.ToLower().Contains(term)) ||
-                    (u.ThirdNameEn != null && u.ThirdNameEn.ToLower().Contains(term)) ||
-                    (u.Email != null && u.Email.ToLower().Contains(term)) ||
-                    (u.Student != null && u.Student.UniversityCode.ToLower().Contains(term)) ||
-                    (u.Student != null && u.Student.NationalId.ToLower().Contains(term))
-                );
-            }
-        }
-
-        query = query.OrderByDescending(u => u.CreatedAt);
-
-        var totalCount = await query.CountAsync();
-
-        List<ApplicationUser> students;
-        if (pageSize.HasValue && pageSize > 0)
-        {
-            var pNum = pageNumber.HasValue && pageNumber > 0 ? pageNumber.Value : 1;
-            students = await query.Skip((pNum - 1) * pageSize.Value).Take(pageSize.Value).ToListAsync();
-        }
-        else
-        {
-            students = await query.ToListAsync();
-        }
-
-        var result = students.Adapt<List<StudentActivationDto>>();
-
-        var paginatedResult = new PaginatedList<StudentActivationDto>(result, pageNumber, totalCount, pageSize);
-
-        return Result.Success(paginatedResult);
-    }
-
-    public async Task<Result> UpdateStudentAsync(string userId, UpdateStudentRequest request)
-    {
-        var userRepo = _unitOfWork.Repository<ApplicationUser>();
-
-        var user = await userRepo.FindOneAsync(
-            u => u.Id == userId,
-            q => q.Include(u => u.Student)
-        );
-
-        if (user is null)
-            return Result.Failure(UserErrors.UserNotFound);
-
-        // ─── Uniqueness checks (exclude current user) ───
-
-        // Email
-        if (!string.Equals(user.Email, request.Email, StringComparison.OrdinalIgnoreCase))
-        {
-            var existingEmail = await userRepo.FindOneAsync(u => u.Email == request.Email && u.Id != userId);
-            if (existingEmail is not null)
-                return Result.Failure(UserErrors.DuplicateEmail);
-        }
-
-        // UniversityCode
-        if (user.Student is not null &&
-            !string.Equals(user.Student.UniversityCode, request.UniversityCode, StringComparison.OrdinalIgnoreCase))
-        {
-            var studentRepo = _unitOfWork.Repository<Student>();
-            var existingCode = await studentRepo.FindOneAsync(s => s.UniversityCode == request.UniversityCode && s.UserId != userId);
-            if (existingCode is not null)
-                return Result.Failure(UserErrors.DuplicateUniversityCode);
-        }
-
-        // NationalId
-        if (user.Student is not null &&
-            !string.Equals(user.Student.NationalId, request.NationalId, StringComparison.OrdinalIgnoreCase))
-        {
-            var studentRepo = _unitOfWork.Repository<Student>();
-            var existingNationalId = await studentRepo.FindOneAsync(s => s.NationalId == request.NationalId && s.UserId != userId);
-            if (existingNationalId is not null)
-                return Result.Failure(UserErrors.DuplicateNationalId);
-        }
-
-        // ─── Split full names into parts (First, Second, Third, Last) ───
-        var (firstAr, secondAr, thirdAr, lastAr) = SplitFullName(request.FullNameAr);
-        user.FirstNameAr = firstAr;
-        user.SecondNameAr = secondAr;
-        user.ThirdNameAr = thirdAr;
-        user.LastNameAr = lastAr;
-
-        var (firstEn, secondEn, thirdEn, lastEn) = SplitFullName(request.FullNameEn);
-        user.FirstNameEn = firstEn;
-        user.SecondNameEn = secondEn;
-        user.ThirdNameEn = thirdEn;
-        user.LastNameEn = lastEn;
-        user.Email = request.Email;
-        user.UserName = request.Email;
-        user.NormalizedEmail = request.Email.ToUpperInvariant();
-        user.NormalizedUserName = request.Email.ToUpperInvariant();
-        user.PhoneNumber = request.PhoneNumber;
-        user.AlternatePhone = request.AlternatePhone;
-
-        // ─── Update Student-specific fields ───
-        if (user.Student is not null)
-        {
-            user.Student.UniversityCode = request.UniversityCode;
-            user.Student.NationalId = request.NationalId;
-            user.Student.Address = request.Address;
-        }
-
-        await _userManager.UpdateAsync(user);
-
-        return Result.Success();
-    }
+    #region Advisor Operations
 
     public async Task<Result<AdvisorDto>> CreateAdvisorAsync(CreateAdvisorDto dto)
     {
@@ -366,10 +274,7 @@ public class UserManagementService : IUserManagementService
         var password = string.IsNullOrWhiteSpace(dto.Password) ? "Advisor@123" : dto.Password;
         var createResult = await _userManager.CreateAsync(user, password);
         if (!createResult.Succeeded)
-        {
-            var errors = string.Join(", ", createResult.Errors.Select(e => e.Description));
-            return Result.Failure<AdvisorDto>(UserErrors.RegistrationFailed(errors));
-        }
+            return HandleIdentityErrors<AdvisorDto>(createResult);
 
         await _userManager.AddToRoleAsync(user, AppRoles.AcademicAdvisor);
 
@@ -426,82 +331,184 @@ public class UserManagementService : IUserManagementService
         ));
     }
 
-    public async Task<Result<PaginatedList<AdvisorDto>>> GetAllAdvisorsAsync(string? searchColumn = null, string? searchTerm = null, int? pageNumber = null, int? pageSize = null)
+    public async Task<Result<PaginatedList<AdvisorDto>>> GetAllAdvisorsAsync(
+        string? searchColumn = null,
+        string? searchTerm = null,
+        int? pageNumber = null,
+        int? pageSize = null)
     {
-        var userRepo = _unitOfWork.Repository<ApplicationUser>();
-
-        var query = userRepo.GetQueryable()
+        var query = _userManager.Users
             .AsNoTracking()
-            .Include(u => u.Advisor)
             .Where(u => u.Advisor != null && u.IsActive);
 
-        if (!string.IsNullOrWhiteSpace(searchTerm))
-        {
-            var term = searchTerm.Trim().ToLower();
-            var col = searchColumn?.Trim().ToLower();
-
-            if (col == "name")
-            {
-                query = query.Where(u =>
-                    u.FirstNameAr.ToLower().Contains(term) || u.LastNameAr.ToLower().Contains(term) ||
-                    (u.SecondNameAr != null && u.SecondNameAr.ToLower().Contains(term)) ||
-                    (u.ThirdNameAr != null && u.ThirdNameAr.ToLower().Contains(term)) ||
-                    u.FirstNameEn.ToLower().Contains(term) || u.LastNameEn.ToLower().Contains(term) ||
-                    (u.SecondNameEn != null && u.SecondNameEn.ToLower().Contains(term)) ||
-                    (u.ThirdNameEn != null && u.ThirdNameEn.ToLower().Contains(term))
-                );
-            }
-            else if (col == "email")
-            {
-                query = query.Where(u => u.Email != null && u.Email.ToLower().Contains(term));
-            }
-            else if (col == "code" || col == "advisorcode")
-            {
-                query = query.Where(u => u.Advisor != null && u.Advisor.AdvisorCode.ToLower().Contains(term));
-            }
-            else
-            {
-                query = query.Where(u =>
-                    u.FirstNameAr.ToLower().Contains(term) || u.LastNameAr.ToLower().Contains(term) ||
-                    (u.SecondNameAr != null && u.SecondNameAr.ToLower().Contains(term)) ||
-                    (u.ThirdNameAr != null && u.ThirdNameAr.ToLower().Contains(term)) ||
-                    u.FirstNameEn.ToLower().Contains(term) || u.LastNameEn.ToLower().Contains(term) ||
-                    (u.SecondNameEn != null && u.SecondNameEn.ToLower().Contains(term)) ||
-                    (u.ThirdNameEn != null && u.ThirdNameEn.ToLower().Contains(term)) ||
-                    (u.Email != null && u.Email.ToLower().Contains(term)) ||
-                    (u.Advisor != null && u.Advisor.AdvisorCode.ToLower().Contains(term))
-                );
-            }
-        }
-
+        query = ApplyAdvisorSearch(query, searchColumn, searchTerm);
         query = query.OrderBy(u => u.FirstNameAr);
 
         var totalCount = await query.CountAsync();
 
-        List<ApplicationUser> advisors;
+        List<AdvisorDto> dtos;
         if (pageSize.HasValue && pageSize > 0)
         {
             var pNum = pageNumber.HasValue && pageNumber > 0 ? pageNumber.Value : 1;
-            advisors = await query.Skip((pNum - 1) * pageSize.Value).Take(pageSize.Value).ToListAsync();
+            dtos = await query.Select(u => new AdvisorDto(
+                u.Id,
+                u.Email!,
+                u.FullNameAr,
+                u.FullNameEn,
+                u.Advisor!.AdvisorCode,
+                u.PhoneNumber,
+                u.IsActive
+            ))
+            .Skip((pNum - 1) * pageSize.Value)
+            .Take(pageSize.Value)
+            .ToListAsync();
         }
         else
         {
-            advisors = await query.ToListAsync();
+            dtos = await query.Select(u => new AdvisorDto(
+                u.Id,
+                u.Email!,
+                u.FullNameAr,
+                u.FullNameEn,
+                u.Advisor!.AdvisorCode,
+                u.PhoneNumber,
+                u.IsActive
+            )).ToListAsync();
         }
-
-        var dtos = advisors.Select(u => new AdvisorDto(
-            u.Id,
-            u.Email!,
-            u.FullNameAr,
-            u.FullNameEn,
-            u.Advisor!.AdvisorCode,
-            u.PhoneNumber,
-            u.IsActive
-        )).ToList();
 
         var paginatedResult = new PaginatedList<AdvisorDto>(dtos, pageNumber, totalCount, pageSize);
 
         return Result.Success(paginatedResult);
+    }
+
+    public async Task<Result> DeleteUserAsync(string userId, string callerUserId)
+    {
+        if (string.Equals(userId, callerUserId, StringComparison.OrdinalIgnoreCase))
+            return Result.Failure(UserErrors.CannotDeleteSelf);
+
+        var userRepo = _unitOfWork.Repository<ApplicationUser>();
+        var user = await userRepo.FindOneAsync(
+            u => u.Id == userId,
+            q => q.Include(u => u.Student)
+                  .Include(u => u.Advisor)
+                  .Include(u => u.Staff)
+        );
+
+        if (user is null)
+            return Result.Failure(UserErrors.UserNotFound);
+
+        if (user.Student is not null)
+        {
+            _unitOfWork.Repository<Student>().Delete(user.Student);
+        }
+        if (user.Advisor is not null)
+        {
+            _unitOfWork.Repository<AcademicAdvisor>().Delete(user.Advisor);
+        }
+        if (user.Staff is not null)
+        {
+            _unitOfWork.Repository<Staff>().Delete(user.Staff);
+        }
+
+        await _unitOfWork.CompleteAsync();
+
+        var deleteResult = await _userManager.DeleteAsync(user);
+        if (!deleteResult.Succeeded)
+        {
+            var errors = string.Join(", ", deleteResult.Errors.Select(e => e.Description));
+            return Result.Failure(UserErrors.DeleteFailed(errors));
+        }
+
+        return Result.Success();
+    }
+
+    #endregion
+
+    #region Private Helpers
+
+    private static IQueryable<ApplicationUser> ApplyStudentSearch(IQueryable<ApplicationUser> query, string? searchColumn, string? searchTerm)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+            return query;
+
+        var term = $"%{searchTerm.Trim()}%";
+        var col = searchColumn?.Trim().ToLower();
+
+        if (col == "name")
+        {
+            return query.Where(u =>
+                EF.Functions.Like(u.FirstNameAr, term) || EF.Functions.Like(u.LastNameAr, term) ||
+                (u.SecondNameAr != null && EF.Functions.Like(u.SecondNameAr, term)) ||
+                (u.ThirdNameAr != null && EF.Functions.Like(u.ThirdNameAr, term)) ||
+                EF.Functions.Like(u.FirstNameEn, term) || EF.Functions.Like(u.LastNameEn, term) ||
+                (u.SecondNameEn != null && EF.Functions.Like(u.SecondNameEn, term)) ||
+                (u.ThirdNameEn != null && EF.Functions.Like(u.ThirdNameEn, term))
+            );
+        }
+        if (col == "email")
+        {
+            return query.Where(u => u.Email != null && EF.Functions.Like(u.Email, term));
+        }
+        if (col == "code" || col == "universitycode")
+        {
+            return query.Where(u => u.Student != null && EF.Functions.Like(u.Student.UniversityCode, term));
+        }
+        if (col == "nationalid")
+        {
+            return query.Where(u => u.Student != null && EF.Functions.Like(u.Student.NationalId, term));
+        }
+
+        return query.Where(u =>
+            EF.Functions.Like(u.FirstNameAr, term) || EF.Functions.Like(u.LastNameAr, term) ||
+            (u.SecondNameAr != null && EF.Functions.Like(u.SecondNameAr, term)) ||
+            (u.ThirdNameAr != null && EF.Functions.Like(u.ThirdNameAr, term)) ||
+            EF.Functions.Like(u.FirstNameEn, term) || EF.Functions.Like(u.LastNameEn, term) ||
+            (u.SecondNameEn != null && EF.Functions.Like(u.SecondNameEn, term)) ||
+            (u.ThirdNameEn != null && EF.Functions.Like(u.ThirdNameEn, term)) ||
+            (u.Email != null && EF.Functions.Like(u.Email, term)) ||
+            (u.Student != null && EF.Functions.Like(u.Student.UniversityCode, term)) ||
+            (u.Student != null && EF.Functions.Like(u.Student.NationalId, term))
+        );
+    }
+
+    private static IQueryable<ApplicationUser> ApplyAdvisorSearch(IQueryable<ApplicationUser> query, string? searchColumn, string? searchTerm)
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+            return query;
+
+        var term = $"%{searchTerm.Trim()}%";
+        var col = searchColumn?.Trim().ToLower();
+
+        if (col == "name")
+        {
+            return query.Where(u =>
+                EF.Functions.Like(u.FirstNameAr, term) || EF.Functions.Like(u.LastNameAr, term) ||
+                (u.SecondNameAr != null && EF.Functions.Like(u.SecondNameAr, term)) ||
+                (u.ThirdNameAr != null && EF.Functions.Like(u.ThirdNameAr, term)) ||
+                EF.Functions.Like(u.FirstNameEn, term) || EF.Functions.Like(u.LastNameEn, term) ||
+                (u.SecondNameEn != null && EF.Functions.Like(u.SecondNameEn, term)) ||
+                (u.ThirdNameEn != null && EF.Functions.Like(u.ThirdNameEn, term))
+            );
+        }
+        if (col == "email")
+        {
+            return query.Where(u => u.Email != null && EF.Functions.Like(u.Email, term));
+        }
+        if (col == "code" || col == "advisorcode")
+        {
+            return query.Where(u => u.Advisor != null && EF.Functions.Like(u.Advisor.AdvisorCode, term));
+        }
+
+        return query.Where(u =>
+            EF.Functions.Like(u.FirstNameAr, term) || EF.Functions.Like(u.LastNameAr, term) ||
+            (u.SecondNameAr != null && EF.Functions.Like(u.SecondNameAr, term)) ||
+            (u.ThirdNameAr != null && EF.Functions.Like(u.ThirdNameAr, term)) ||
+            EF.Functions.Like(u.FirstNameEn, term) || EF.Functions.Like(u.LastNameEn, term) ||
+            (u.SecondNameEn != null && EF.Functions.Like(u.SecondNameEn, term)) ||
+            (u.ThirdNameEn != null && EF.Functions.Like(u.ThirdNameEn, term)) ||
+            (u.Email != null && EF.Functions.Like(u.Email, term)) ||
+            (u.Advisor != null && EF.Functions.Like(u.Advisor.AdvisorCode, term))
+        );
     }
 
     private static (string First, string? Second, string? Third, string Last) SplitFullName(string? fullName)
@@ -521,5 +528,12 @@ public class UserManagementService : IUserManagementService
             _ => (parts[0], parts[1], parts[2], string.Join(" ", parts[3..]))
         };
     }
-}
 
+    private static Result<T> HandleIdentityErrors<T>(IdentityResult result)
+    {
+        var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+        return Result.Failure<T>(UserErrors.RegistrationFailed(errors));
+    }
+
+    #endregion
+}
