@@ -20,7 +20,7 @@ public class AuthController : ControllerBase
     /// </summary>
     [HttpPost("register")]
     [AllowAnonymous]
-    [ProducesResponseType(typeof(ApiResponse<AuthResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<UserResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> RegisterStudent([FromBody] RegisterStudentRequest request)
     {
@@ -30,7 +30,8 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// User Login — generates JWT Access Token + Refresh Token and sets HttpOnly Cookies.
+    /// User Login — sets HttpOnly cookies for JWT Access Token + Refresh Token.
+    /// Response body contains user info only (no tokens).
     /// </summary>
     [HttpPost("login")]
     [AllowAnonymous]
@@ -43,43 +44,47 @@ public class AuthController : ControllerBase
         if (result.IsFailure)
             return result.ToResponse(HttpContext);
 
-        SetAuthCookies(result.Value.Token, result.Value.RefreshToken, result.Value.RefreshTokenExpiresOn);
-        return result.ToResponse(HttpContext, LocalizationKeys.LoginSuccessful);
+        var authResult = result.Value;
+        SetAuthCookies(authResult.AccessToken, authResult.RefreshToken, authResult.RefreshTokenExpiresOn);
+
+        return Result.Success(authResult.User).ToResponse(HttpContext, LocalizationKeys.LoginSuccessful);
     }
 
     /// <summary>
-    /// Refresh JWT Access Token using Refresh Token.
+    /// Refresh JWT Access Token using Refresh Token from HttpOnly cookie.
     /// </summary>
-    [HttpPost("refresh-token")]
+    [HttpPost("refresh")]
     [AllowAnonymous]
     [ProducesResponseType(typeof(ApiResponse<AuthResponseDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest? request)
+    public async Task<IActionResult> RefreshToken()
     {
-        var token = request?.Token ?? Request.Cookies[AuthConstants.AccessTokenCookie];
-        var refreshToken = request?.RefreshToken ?? Request.Cookies[AuthConstants.RefreshTokenCookie];
+        var accessToken = Request.Cookies[AuthConstants.AccessTokenCookie] ?? string.Empty;
+        var refreshToken = Request.Cookies[AuthConstants.RefreshTokenCookie];
 
         if (string.IsNullOrEmpty(refreshToken))
             return Result.Failure(UserErrors.InvalidRefreshToken).ToResponse(HttpContext);
 
-        var result = await _authService.RefreshTokenAsync(token ?? string.Empty, refreshToken);
+        var result = await _authService.RefreshTokenAsync(accessToken, refreshToken);
 
         if (result.IsFailure)
             return result.ToResponse(HttpContext);
 
-        SetAuthCookies(result.Value.Token, result.Value.RefreshToken, result.Value.RefreshTokenExpiresOn);
-        return result.ToResponse(HttpContext, LocalizationKeys.LoginSuccessful);
+        var authResult = result.Value;
+        SetAuthCookies(authResult.AccessToken, authResult.RefreshToken, authResult.RefreshTokenExpiresOn);
+
+        return Result.Success(authResult.User).ToResponse(HttpContext, LocalizationKeys.LoginSuccessful);
     }
 
     /// <summary>
-    /// Revoke a refresh token.
+    /// Revoke the refresh token (from HttpOnly cookie) and clear auth cookies.
     /// </summary>
-    [HttpPost("revoke-token")]
+    [HttpPost("revoke-refresh-token")]
     [Authorize]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> RevokeToken([FromBody] RefreshTokenRequest? request)
+    public async Task<IActionResult> RevokeToken()
     {
-        var refreshToken = request?.RefreshToken ?? Request.Cookies[AuthConstants.RefreshTokenCookie];
+        var refreshToken = Request.Cookies[AuthConstants.RefreshTokenCookie];
         if (string.IsNullOrEmpty(refreshToken))
             return Result.Failure(UserErrors.InvalidRefreshToken).ToResponse(HttpContext);
 
@@ -88,32 +93,9 @@ public class AuthController : ControllerBase
         if (result.IsFailure)
             return result.ToResponse(HttpContext);
 
-        Response.Cookies.Delete(AuthConstants.AccessTokenCookie);
-        Response.Cookies.Delete(AuthConstants.RefreshTokenCookie);
+        ClearAuthCookies();
 
         return result.ToResponse(HttpContext, LocalizationKeys.SuccessDefault);
-    }
-
-    /// <summary>
-    /// User Logout — revokes refresh token and clears auth cookies.
-    /// </summary>
-    [HttpPost("logout")]
-    [Authorize]
-    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> Logout()
-    {
-        var refreshToken = Request.Cookies[AuthConstants.RefreshTokenCookie];
-        if (!string.IsNullOrEmpty(refreshToken))
-        {
-            await _authService.RevokeTokenAsync(refreshToken);
-        }
-
-        await _authService.LogoutAsync();
-
-        Response.Cookies.Delete(AuthConstants.AccessTokenCookie);
-        Response.Cookies.Delete(AuthConstants.RefreshTokenCookie);
-
-        return Result.Success().ToResponse(HttpContext, LocalizationKeys.LogoutSuccessful);
     }
 
     /// <summary>
@@ -163,6 +145,12 @@ public class AuthController : ControllerBase
 
         Response.Cookies.Append(AuthConstants.AccessTokenCookie, accessToken, cookieOptions);
         Response.Cookies.Append(AuthConstants.RefreshTokenCookie, refreshToken, cookieOptions.WithExpires(refreshTokenExpiresOn));
+    }
+
+    private void ClearAuthCookies()
+    {
+        Response.Cookies.Delete(AuthConstants.AccessTokenCookie);
+        Response.Cookies.Delete(AuthConstants.RefreshTokenCookie);
     }
 }
 

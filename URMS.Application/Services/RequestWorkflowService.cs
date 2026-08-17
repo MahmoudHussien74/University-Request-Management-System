@@ -31,32 +31,9 @@ public class RequestWorkflowService : IRequestWorkflowService
         if (request is null)
             return Result.Failure<UniversityRequestResponseDto>(RequestErrors.RequestNotFound);
 
-        if (request.Status != RequestStatus.Pending && request.Status != RequestStatus.AdvisorApproved)
-            return Result.Failure<UniversityRequestResponseDto>(RequestErrors.InvalidStatusForAdvisorReview);
-
-        request.AdvisorId = advisorId;
-        request.AdvisorReviewedAt = DateTime.UtcNow;
-
-        var oldStatus = request.Status;
-
-        if (dto.IsApproved)
-        {
-            request.Status = RequestStatus.AdvisorApproved;
-        }
-        else
-        {
-            request.Status = RequestStatus.Rejected;
-            request.RejectionReason = dto.RejectionReason;
-        }
-
-        request.HistoryLogs.Add(new RequestHistoryLog
-        {
-            ActionById = advisorId,
-            OldStatus = oldStatus,
-            NewStatus = request.Status,
-            ActionMessage = dto.IsApproved ? RequestLogMessages.ApprovedByAdvisor : RequestLogMessages.RejectedByAdvisor,
-            Notes = dto.RejectionReason
-        });
+        var result = request.ReviewByAdvisor(advisorId, dto.IsApproved, dto.RejectionReason);
+        if (result.IsFailure)
+            return Result.Failure<UniversityRequestResponseDto>(result.Error);
 
         await _unitOfWork.CompleteAsync();
 
@@ -71,38 +48,20 @@ public class RequestWorkflowService : IRequestWorkflowService
         if (request is null)
             return Result.Failure<UniversityRequestResponseDto>(RequestErrors.RequestNotFound);
 
-        if (request.Status == RequestStatus.Completed || request.Status == RequestStatus.Rejected)
-            return Result.Failure<UniversityRequestResponseDto>(RequestErrors.InvalidStatusForSendEmail);
-
-        if (request.Status != RequestStatus.AdvisorApproved)
-            return Result.Failure<UniversityRequestResponseDto>(RequestErrors.InvalidStatusForSendEmail);
-
-        request.AdvisorId = advisorId;
-        request.AdvisorReviewedAt = DateTime.UtcNow;
-        var oldStatus = request.Status;
-        request.Status = RequestStatus.SentToAdministration;
-        request.ExternalAdministrationEmail = dto.AdministrationEmail;
-        request.ExternalAdministrationSentAt = DateTime.UtcNow;
-
+        // Infrastructure: generate OTP & token
         var otpCode = _otpService.GenerateOtpCode();
-        var now = DateTime.UtcNow;
         var confirmationToken = Guid.NewGuid().ToString("N");
-        request.ExternalAdministrationOtpSentAt = now;
-        request.ExternalAdministrationOtpExpiresAt = now.AddMinutes(_emailSettings.ExternalAdministrationOtpTtlMinutes);
-        request.ConfirmationToken = confirmationToken;
-        request.ExternalAdministrationOtpCodeHash = _otpService.HashOtp(otpCode, confirmationToken);
-        request.ExternalAdministrationResponseNotes = null;
-        request.ExternalAdministrationRespondedAt = null;
+        var otpExpiresAt = DateTime.UtcNow.AddMinutes(_emailSettings.ExternalAdministrationOtpTtlMinutes);
+        var otpCodeHash = _otpService.HashOtp(otpCode, confirmationToken);
 
-        request.HistoryLogs.Add(new RequestHistoryLog
-        {
-            ActionById = advisorId,
-            OldStatus = oldStatus,
-            NewStatus = request.Status,
-            ActionMessage = RequestLogMessages.SentToAdministration,
-            Notes = dto.Message
-        });
+        // Domain: state transition
+        var result = request.SendToAdministration(
+            advisorId, dto.AdministrationEmail,
+            otpCodeHash, confirmationToken, otpExpiresAt, dto.Message);
+        if (result.IsFailure)
+            return Result.Failure<UniversityRequestResponseDto>(result.Error);
 
+        // Infrastructure: send email
         var requestUrl = _emailSettings.ExternalAdministrationBaseUrl.TrimEnd('/');
         var reviewLink = $"{requestUrl}/{confirmationToken}";
 
@@ -125,12 +84,7 @@ public class RequestWorkflowService : IRequestWorkflowService
         if (request is null)
             return Result.Failure<UniversityRequestResponseDto>(RequestErrors.RequestNotFound);
 
-        if (request.ExternalAdministrationRespondedAt.HasValue)
-            return Result.Failure<UniversityRequestResponseDto>(RequestErrors.InvalidStatusForAdministrationConfirm);
-
-        if (request.Status != RequestStatus.SentToAdministration)
-            return Result.Failure<UniversityRequestResponseDto>(RequestErrors.InvalidStatusForAdministrationConfirm);
-
+        // Infrastructure: OTP validation (before domain state transition)
         if (string.IsNullOrWhiteSpace(dto.Otp) || string.IsNullOrWhiteSpace(request.ExternalAdministrationOtpCodeHash) || !request.ExternalAdministrationOtpExpiresAt.HasValue)
             return Result.Failure<UniversityRequestResponseDto>(RequestErrors.InvalidExternalAdministrationOtp);
 
@@ -140,33 +94,10 @@ public class RequestWorkflowService : IRequestWorkflowService
         if (!_otpService.VerifyOtp(dto.Otp, token, request.ExternalAdministrationOtpCodeHash))
             return Result.Failure<UniversityRequestResponseDto>(RequestErrors.InvalidExternalAdministrationOtp);
 
-        var oldStatus = request.Status;
-        request.ExternalAdministrationRespondedAt = DateTime.UtcNow;
-        request.ExternalAdministrationResponseNotes = dto.Notes;
-        request.ConfirmationToken = null;
-        request.ExternalAdministrationOtpCodeHash = null;
-        request.ExternalAdministrationOtpSentAt = null;
-        request.ExternalAdministrationOtpExpiresAt = null;
-
-        if (dto.IsApproved)
-        {
-            request.Status = RequestStatus.Completed;
-            request.CompletedAt = DateTime.UtcNow;
-        }
-        else
-        {
-            request.Status = RequestStatus.Rejected;
-            request.RejectionReason = dto.Notes;
-        }
-
-        request.HistoryLogs.Add(new RequestHistoryLog
-        {
-            ActionById = request.StudentId,
-            OldStatus = oldStatus,
-            NewStatus = request.Status,
-            ActionMessage = RequestLogMessages.ExternalAdministrationResponded,
-            Notes = dto.Notes
-        });
+        // Domain: state transition
+        var result = request.RespondByExternalAdministration(dto.IsApproved, dto.Notes);
+        if (result.IsFailure)
+            return Result.Failure<UniversityRequestResponseDto>(result.Error);
 
         await _unitOfWork.CompleteAsync();
         return Result.Success(request.MapToDto(request.Student, request.Advisor, request.Administration));
@@ -179,33 +110,9 @@ public class RequestWorkflowService : IRequestWorkflowService
         if (request is null)
             return Result.Failure<UniversityRequestResponseDto>(RequestErrors.RequestNotFound);
 
-        if (request.Status != RequestStatus.SentToAdministration)
-            return Result.Failure<UniversityRequestResponseDto>(RequestErrors.InvalidStatusForAdministrationConfirm);
-
-        request.AdministrationId = administrationId;
-        request.AdministrationConfirmedAt = DateTime.UtcNow;
-
-        var oldStatus = request.Status;
-
-        if (dto.IsApproved)
-        {
-            request.Status = RequestStatus.Completed;
-            request.CompletedAt = DateTime.UtcNow;
-        }
-        else
-        {
-            request.Status = RequestStatus.Rejected;
-            request.RejectionReason = dto.ConfirmationNotes;
-        }
-
-        request.HistoryLogs.Add(new RequestHistoryLog
-        {
-            ActionById = administrationId,
-            OldStatus = oldStatus,
-            NewStatus = request.Status,
-            ActionMessage = dto.IsApproved ? RequestLogMessages.ConfirmedByAdministration : RequestLogMessages.RejectedByAdministration,
-            Notes = dto.ConfirmationNotes
-        });
+        var result = request.ConfirmByAdministration(administrationId, dto.IsApproved, dto.ConfirmationNotes);
+        if (result.IsFailure)
+            return Result.Failure<UniversityRequestResponseDto>(result.Error);
 
         await _unitOfWork.CompleteAsync();
 
@@ -220,42 +127,9 @@ public class RequestWorkflowService : IRequestWorkflowService
         if (request is null)
             return Result.Failure<UniversityRequestResponseDto>(RequestErrors.RequestNotFound);
 
-        if (dto.TargetStatus == RequestStatus.SentToAdministration)
-            return Result.Failure<UniversityRequestResponseDto>(RequestErrors.InvalidStatusForAdminOverride);
-
-        var oldStatus = request.Status;
-        request.Status = dto.TargetStatus;
-
-        if (dto.TargetStatus == RequestStatus.Completed)
-        {
-            request.CompletedAt = DateTime.UtcNow;
-            request.AdministrationId = adminId;
-            request.AdministrationConfirmedAt = DateTime.UtcNow;
-
-            if (request.AdvisorReviewedAt == null)
-            {
-                request.AdvisorId = adminId;
-                request.AdvisorReviewedAt = DateTime.UtcNow;
-            }
-        }
-        else if (dto.TargetStatus == RequestStatus.Rejected)
-        {
-            request.RejectionReason = dto.ReasonOrNotes;
-        }
-        else if (dto.TargetStatus == RequestStatus.AdvisorApproved)
-        {
-            request.AdvisorId = adminId;
-            request.AdvisorReviewedAt = DateTime.UtcNow;
-        }
-
-        request.HistoryLogs.Add(new RequestHistoryLog
-        {
-            ActionById = adminId,
-            OldStatus = oldStatus,
-            NewStatus = request.Status,
-            ActionMessage = RequestLogMessages.AdminOverride,
-            Notes = dto.ReasonOrNotes
-        });
+        var result = request.OverrideStatusByAdmin(adminId, dto.TargetStatus, dto.ReasonOrNotes);
+        if (result.IsFailure)
+            return Result.Failure<UniversityRequestResponseDto>(result.Error);
 
         await _unitOfWork.CompleteAsync();
 

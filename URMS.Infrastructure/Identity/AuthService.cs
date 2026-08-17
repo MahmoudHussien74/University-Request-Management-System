@@ -13,26 +13,23 @@ namespace URMS.Infrastructure.Identity;
 public class AuthService : IAuthService
 {
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly IRolePermissionService _rolePermissionService;
     private readonly IJwtTokenGenerator _jwtTokenGenerator;
     private readonly IUnitOfWork _unitOfWork;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
-        SignInManager<ApplicationUser> signInManager,
         IRolePermissionService rolePermissionService,
         IJwtTokenGenerator jwtTokenGenerator,
         IUnitOfWork unitOfWork)
     {
         _userManager = userManager;
-        _signInManager = signInManager;
         _rolePermissionService = rolePermissionService;
         _jwtTokenGenerator = jwtTokenGenerator;
         _unitOfWork = unitOfWork;
     }
 
-    public async Task<Result<AuthResponseDto>> LoginAsync(LoginRequest request)
+    public async Task<Result<AuthResult>> LoginAsync(LoginRequest request)
     {
         var userRepo = _unitOfWork.Repository<ApplicationUser>();
 
@@ -42,19 +39,19 @@ public class AuthService : IAuthService
         );
 
         if (user is null)
-            return Result.Failure<AuthResponseDto>(UserErrors.InvalidCredentials);
+            return Result.Failure<AuthResult>(UserErrors.InvalidCredentials);
 
         if (!user.IsActive)
-            return Result.Failure<AuthResponseDto>(UserErrors.AccountDeactivated);
+            return Result.Failure<AuthResult>(UserErrors.AccountDeactivated);
 
         if (!user.IsApproved)
-            return Result.Failure<AuthResponseDto>(UserErrors.AccountNotApproved);
+            return Result.Failure<AuthResult>(UserErrors.AccountNotApproved);
 
         var isPasswordValid = await _userManager.CheckPasswordAsync(user, request.Password);
         if (!isPasswordValid)
-            return Result.Failure<AuthResponseDto>(UserErrors.InvalidCredentials);
+            return Result.Failure<AuthResult>(UserErrors.InvalidCredentials);
 
-        return Result.Success(await GenerateAuthResponseAsync(user));
+        return Result.Success(await GenerateAuthResultAsync(user));
     }
 
     public async Task<Result<UserResponse>> RegisterStudentAsync(RegisterStudentRequest request)
@@ -141,10 +138,7 @@ public class AuthService : IAuthService
         ));
     }
 
-    public async Task LogoutAsync()
-    {
-        await _signInManager.SignOutAsync();
-    }
+
 
     public async Task<Result> ChangePasswordAsync(string userId, ChangePasswordRequest request)
     {
@@ -191,7 +185,7 @@ public class AuthService : IAuthService
         ));
     }
 
-    public async Task<Result<AuthResponseDto>> RefreshTokenAsync(string token, string refreshToken)
+    public async Task<Result<AuthResult>> RefreshTokenAsync(string accessToken, string refreshToken)
     {
         var userRepo = _unitOfWork.Repository<ApplicationUser>();
 
@@ -201,18 +195,18 @@ public class AuthService : IAuthService
         );
 
         if (user is null)
-            return Result.Failure<AuthResponseDto>(UserErrors.InvalidRefreshToken);
+            return Result.Failure<AuthResult>(UserErrors.InvalidRefreshToken);
 
         var existingRefreshToken = user.RefreshTokens.Single(t => t.Token == refreshToken);
 
         if (!existingRefreshToken.IsActive)
-            return Result.Failure<AuthResponseDto>(UserErrors.RefreshTokenInactive);
+            return Result.Failure<AuthResult>(UserErrors.RefreshTokenInactive);
 
         // Revoke current refresh token
         existingRefreshToken.IsRevoked = true;
         existingRefreshToken.RevokedOn = DateTime.UtcNow;
 
-        return Result.Success(await GenerateAuthResponseAsync(user));
+        return Result.Success(await GenerateAuthResultAsync(user));
     }
 
     public async Task<Result> RevokeTokenAsync(string refreshToken)
@@ -239,7 +233,7 @@ public class AuthService : IAuthService
         return Result.Success();
     }
 
-    private async Task<AuthResponseDto> GenerateAuthResponseAsync(ApplicationUser user)
+    private async Task<AuthResult> GenerateAuthResultAsync(ApplicationUser user)
     {
         var roles = await _userManager.GetRolesAsync(user);
         var permissions = await _rolePermissionService.GetUserPermissionsAsync(user.Id);
@@ -250,7 +244,7 @@ public class AuthService : IAuthService
         user.RefreshTokens.Add(refreshToken);
         await _unitOfWork.CompleteAsync();
 
-        return new AuthResponseDto(
+        var userDto = new AuthResponseDto(
             user.Id,
             user.Email!,
             user.FullNameAr,
@@ -258,9 +252,11 @@ public class AuthService : IAuthService
             user.Student?.UniversityCode,
             user.Advisor?.AdvisorCode,
             user.IsApproved,
-            user.IsActive,
-            roles,
-            permissions,
+            user.IsActive
+        );
+
+        return new AuthResult(
+            userDto,
             jwtToken,
             jwtExpiresOn,
             refreshToken.Token,

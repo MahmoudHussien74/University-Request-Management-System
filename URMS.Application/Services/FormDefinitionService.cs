@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using URMS.Application.DTOs.Forms;
 
 namespace URMS.Application.Services;
@@ -6,11 +7,13 @@ public class FormDefinitionService : IFormDefinitionService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IFormDefinitionRepository _formRepo;
+    private readonly ILogger<FormDefinitionService> _logger;
 
-    public FormDefinitionService(IUnitOfWork unitOfWork, IFormDefinitionRepository formRepo)
+    public FormDefinitionService(IUnitOfWork unitOfWork, IFormDefinitionRepository formRepo, ILogger<FormDefinitionService> logger)
     {
         _unitOfWork = unitOfWork;
         _formRepo = formRepo;
+        _logger = logger;
     }
 
     public async Task<Result<FormDefinitionResponseDto>> CreateFormAsync(CreateFormDefinitionDto dto, string createdBy)
@@ -168,7 +171,10 @@ public class FormDefinitionService : IFormDefinitionService
             {
                 options = JsonSerializer.Deserialize<List<string>>(newField.OptionsJson);
             }
-            catch { }
+            catch (JsonException ex)
+            {
+                _logger.LogWarning(ex, "Failed to deserialize OptionsJson for field '{FieldKey}'", newField.FieldKey);
+            }
         }
 
         var responseDto = new FormFieldResponseDto(
@@ -267,14 +273,21 @@ public class FormDefinitionService : IFormDefinitionService
         return Result.Success(true);
     }
 
-    private static FormDefinitionResponseDto MapToResponseDto(FormDefinition form, int requestsCount)
+    private FormDefinitionResponseDto MapToResponseDto(FormDefinition form, int requestsCount)
     {
         var fieldDtos = form.Fields?.OrderBy(f => f.Order).Select(f =>
         {
             List<string>? options = null;
             if (!string.IsNullOrEmpty(f.OptionsJson))
             {
-                try { options = JsonSerializer.Deserialize<List<string>>(f.OptionsJson); } catch { }
+                try
+                {
+                    options = JsonSerializer.Deserialize<List<string>>(f.OptionsJson);
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogWarning(ex, "Failed to deserialize OptionsJson for field '{FieldKey}'", f.FieldKey);
+                }
             }
 
             return new FormFieldResponseDto(
