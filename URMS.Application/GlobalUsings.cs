@@ -18,4 +18,4 @@ global using Microsoft.Extensions.Options;
 global using URMS.Application.Contracts.Forms;
 global using URMS.Application.Contracts.Requests;
 global using URMS.Application.DTOs.Requests;
-global using URMS.Domain.Settings;
+global using URMS.Application.Settings;

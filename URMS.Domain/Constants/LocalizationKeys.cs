@@ -8,6 +8,8 @@ public static class LocalizationKeys
     public const string ValidationFailed = "ValidationFailed";
     public const string UnauthorizedAccess = "UnauthorizedAccess";
     public const string ForbiddenAccess = "ForbiddenAccess";
+    public const string RateLimitExceeded = "RateLimitExceeded";
+    public const string CsrfValidationFailed = "CsrfValidationFailed";
 
     // Authentication Keys
     public const string LoginSuccessful = "LoginSuccessful";

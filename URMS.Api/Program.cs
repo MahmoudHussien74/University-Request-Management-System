@@ -26,6 +26,7 @@ app.UseSwaggerUI(c =>
 app.UseHttpsRedirection();
 app.UseExceptionHandler();
 app.UseCors("DefaultPolicy");
+app.UseRateLimiter();
 
 app.UseSession();
 app.UseAuthentication();

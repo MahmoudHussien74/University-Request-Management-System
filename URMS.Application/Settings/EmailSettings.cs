@@ -1,4 +1,4 @@
-namespace URMS.Domain.Settings;
+namespace URMS.Application.Settings;
 
 public class EmailSettings
 {

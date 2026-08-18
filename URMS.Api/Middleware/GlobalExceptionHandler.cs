@@ -22,7 +22,7 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
 
         var failureResponse = ApiResponse.Failure(
             message: msg,
-            errors: [new ApiError("InternalServerError", exception.Message)],
+            errors: [new ApiError("InternalServerError", msg)],
             statusCode: StatusCodes.Status500InternalServerError
         );
 

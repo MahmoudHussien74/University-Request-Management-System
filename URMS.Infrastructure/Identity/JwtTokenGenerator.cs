@@ -5,8 +5,7 @@ using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using URMS.Application.Contracts.Identity;
-using URMS.Domain.Entities;
-using URMS.Domain.Settings;
+using URMS.Application.Settings;
 
 namespace URMS.Infrastructure.Identity;
 

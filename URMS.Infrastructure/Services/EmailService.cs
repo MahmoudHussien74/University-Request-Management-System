@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Mail;
 using Microsoft.Extensions.Options;
-using URMS.Domain.Settings;
+using URMS.Application.Settings;
 
 using URMS.Application.Contracts.Infrastructure;
 

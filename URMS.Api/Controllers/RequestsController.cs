@@ -1,9 +1,10 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.RateLimiting;
 using URMS.Application.Common.Pagination;
 using URMS.Application.Contracts.Requests;
 using URMS.Application.DTOs.Requests;
 using URMS.Domain.Enums;
-using URMS.Infrastructure.PermissionAuthorization;
+using URMS.Api.Authorization;
 
 namespace URMS.Api.Controllers;
 
@@ -162,6 +163,7 @@ public class RequestsController : ControllerBase
     /// </summary>
     [HttpPost("external/{token}/respond")]
     [AllowAnonymous]
+    [EnableRateLimiting("sensitive")]
     public async Task<IActionResult> RespondExternalRequest(string token, [FromBody] ExternalAdministrationResponseDto dto)
     {
         var result = await _requestService.RespondExternalRequestAsync(token, dto);

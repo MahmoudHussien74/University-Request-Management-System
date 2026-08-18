@@ -17,6 +17,8 @@ public class LocalizationService : ILocalizationService
         ["InternalServerError"] = ("حدث خطأ فني غير متوقع. يرجى المحاولة لاحقاً.", "An unexpected technical error occurred. Please try again later."),
         ["UnauthorizedAccess"] = ("عفواً، يجب تسجيل الدخول للوصول إلى هذه الصفحة.", "Unauthorized access. Please log in to continue."),
         ["ForbiddenAccess"] = ("عفواً، ليس لديك صلاحية لتنفيذ هذا الإجراء.", "You do not have permission to perform this action."),
+        ["RateLimitExceeded"] = ("عدد المحاولات كثير جداً. يرجى الانتظار قليلاً ثم المحاولة مرة أخرى.", "Too many requests. Please wait a moment and try again."),
+        ["CsrfValidationFailed"] = ("طلب غير صالح — يرجى تحديث الصفحة والمحاولة مرة أخرى.", "Invalid request — please refresh the page and try again."),
 
         // Auth & Account Success
         ["UserRegisteredSuccessfully"] = ("تم إنشاء حساب الطالب بنجاح، وفي انتظار موافقة المرشد الأكاديمي.", "Student account registered successfully. Pending academic advisor approval."),

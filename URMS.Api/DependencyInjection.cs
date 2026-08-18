@@ -1,4 +1,6 @@
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.OpenApi;
 using URMS.Api.Middleware;
 
@@ -40,6 +42,7 @@ public static class DependencyInjection
         services.AddControllers(options =>
         {
             options.Filters.Add<ValidationFilter>();
+            options.Filters.Add<CsrfHeaderFilter>();
         })
         .AddJsonOptions(options =>
         {
@@ -92,6 +95,48 @@ public static class DependencyInjection
             options.SetDefaultCulture("ar-EG")
                    .AddSupportedCultures(supportedCultures)
                    .AddSupportedUICultures(supportedCultures);
+        });
+
+        // ─── 6. Rate Limiting Configuration ───
+        services.AddRateLimiter(options =>
+        {
+            options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+            // Auth endpoints: 5 requests per 30 seconds per IP
+            options.AddFixedWindowLimiter("auth", opt =>
+            {
+                opt.PermitLimit = 5;
+                opt.Window = TimeSpan.FromSeconds(30);
+                opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                opt.QueueLimit = 0;
+            });
+
+            // Sensitive endpoints (OTP verification): 3 requests per minute per IP
+            options.AddFixedWindowLimiter("sensitive", opt =>
+            {
+                opt.PermitLimit = 3;
+                opt.Window = TimeSpan.FromMinutes(1);
+                opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                opt.QueueLimit = 0;
+            });
+
+            // Localized rejection response
+            options.OnRejected = async (context, cancellationToken) =>
+            {
+                context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+                context.HttpContext.Response.ContentType = "application/json";
+
+                var localizer = context.HttpContext.RequestServices.GetService<ILocalizationService>();
+                var msg = localizer?.GetLocalizedString("RateLimitExceeded")
+                    ?? "Too many requests. Please try again later.";
+
+                var response = ApiResponse.Failure(
+                    msg,
+                    [new ApiError("RateLimit.Exceeded", msg)],
+                    StatusCodes.Status429TooManyRequests);
+
+                await context.HttpContext.Response.WriteAsJsonAsync(response, cancellationToken);
+            };
         });
 
         return services;

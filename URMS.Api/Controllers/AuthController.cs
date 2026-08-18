@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.RateLimiting;
 using URMS.Application.Contracts.Identity;
 using URMS.Application.DTOs.Auth;
 
@@ -20,6 +21,7 @@ public class AuthController : ControllerBase
     /// </summary>
     [HttpPost("register")]
     [AllowAnonymous]
+    [EnableRateLimiting("auth")]
     [ProducesResponseType(typeof(ApiResponse<UserResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> RegisterStudent([FromBody] RegisterStudentRequest request)
@@ -35,6 +37,7 @@ public class AuthController : ControllerBase
     /// </summary>
     [HttpPost("login")]
     [AllowAnonymous]
+    [EnableRateLimiting("auth")]
     [ProducesResponseType(typeof(ApiResponse<AuthResponseDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
@@ -55,6 +58,7 @@ public class AuthController : ControllerBase
     /// </summary>
     [HttpPost("refresh")]
     [AllowAnonymous]
+    [EnableRateLimiting("auth")]
     [ProducesResponseType(typeof(ApiResponse<AuthResponseDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> RefreshToken()
@@ -103,6 +107,7 @@ public class AuthController : ControllerBase
     /// </summary>
     [HttpPost("change-password")]
     [Authorize]
+    [EnableRateLimiting("auth")]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
@@ -140,7 +145,8 @@ public class AuthController : ControllerBase
         {
             HttpOnly = true,
             SameSite = isHttps ? SameSiteMode.None : SameSiteMode.Lax,
-            Secure = isHttps
+            Secure = isHttps,
+            Path = "/"
         };
 
         Response.Cookies.Append(AuthConstants.AccessTokenCookie, accessToken, cookieOptions);
