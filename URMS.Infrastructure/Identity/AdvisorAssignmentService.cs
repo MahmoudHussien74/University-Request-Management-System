@@ -1,5 +1,6 @@
 using ExcelDataReader;
 using Microsoft.EntityFrameworkCore;
+using URMS.Application.Common.Helpers;
 using URMS.Application.Common.Pagination;
 using URMS.Application.Contracts.Identity;
 using URMS.Application.Contracts.Persistence;
@@ -115,31 +116,7 @@ public class AdvisorAssignmentService : IAdvisorAssignmentService
             );
         }).ToList();
 
-        if (!string.IsNullOrWhiteSpace(searchTerm))
-        {
-            var term = searchTerm.Trim().ToLower();
-            var col = searchColumn?.Trim().ToLower();
-
-            if (col == "code" || col == "universitycode")
-            {
-                studentDtos = studentDtos.Where(s => s.UniversityCode.ToLower().Contains(term)).ToList();
-            }
-            else if (col == "name")
-            {
-                studentDtos = studentDtos.Where(s =>
-                    (s.StudentNameAr != null && s.StudentNameAr.ToLower().Contains(term)) ||
-                    (s.StudentNameEn != null && s.StudentNameEn.ToLower().Contains(term))
-                ).ToList();
-            }
-            else
-            {
-                studentDtos = studentDtos.Where(s =>
-                    s.UniversityCode.ToLower().Contains(term) ||
-                    (s.StudentNameAr != null && s.StudentNameAr.ToLower().Contains(term)) ||
-                    (s.StudentNameEn != null && s.StudentNameEn.ToLower().Contains(term))
-                ).ToList();
-            }
-        }
+        studentDtos = studentDtos.ApplySearch(searchColumn, searchTerm).ToList();
 
         var paginatedStudents = PaginatedList<AssignedStudentDto>.Create(studentDtos, pageNumber, pageSize);
 
@@ -470,42 +447,7 @@ public class AdvisorAssignmentService : IAdvisorAssignmentService
             );
         }).ToList();
 
-        if (!string.IsNullOrWhiteSpace(searchTerm))
-        {
-            var term = searchTerm.Trim().ToLower();
-            var col = searchColumn?.Trim().ToLower();
-
-            if (col == "code" || col == "universitycode")
-            {
-                allItems = allItems.Where(s => s.UniversityCode.ToLower().Contains(term)).ToList();
-            }
-            else if (col == "name")
-            {
-                allItems = allItems.Where(s =>
-                    (s.FullNameAr != null && s.FullNameAr.ToLower().Contains(term)) ||
-                    (s.FullNameEn != null && s.FullNameEn.ToLower().Contains(term))
-                ).ToList();
-            }
-            else if (col == "nationalid")
-            {
-                allItems = allItems.Where(s => s.NationalId != null && s.NationalId.ToLower().Contains(term)).ToList();
-            }
-            else if (col == "email")
-            {
-                allItems = allItems.Where(s => s.Email != null && s.Email.ToLower().Contains(term)).ToList();
-            }
-            else
-            {
-                allItems = allItems.Where(s =>
-                    s.UniversityCode.ToLower().Contains(term) ||
-                    (s.FullNameAr != null && s.FullNameAr.ToLower().Contains(term)) ||
-                    (s.FullNameEn != null && s.FullNameEn.ToLower().Contains(term)) ||
-                    (s.NationalId != null && s.NationalId.ToLower().Contains(term)) ||
-                    (s.Email != null && s.Email.ToLower().Contains(term)) ||
-                    (s.PhoneNumber != null && s.PhoneNumber.ToLower().Contains(term))
-                ).ToList();
-            }
-        }
+        allItems = allItems.ApplySearch(searchColumn, searchTerm).ToList();
 
         var registeredCount = allItems.Count(s => s.IsRegistered);
         var unregisteredCount = allItems.Count - registeredCount;

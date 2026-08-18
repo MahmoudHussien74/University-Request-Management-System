@@ -57,6 +57,7 @@ public class FormDefinitionRepository : GenericRepository<FormDefinition>, IForm
                         f.IsActive &&
                         (!f.StartDate.HasValue || f.StartDate.Value <= now) &&
                         (!f.EndDate.HasValue || f.EndDate.Value >= now))
+            .OrderByDescending(f => f.CreatedAt)
             .Select(f => new FormSummaryDto(
                 f.Id,
                 f.TitleAr,
