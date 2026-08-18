@@ -29,10 +29,12 @@ public class AdvisorAssignmentsController : ControllerBase
         [FromQuery] string? searchColumn = null,
         [FromQuery] string? searchTerm = null,
         [FromQuery] int? pageNumber = null,
-        [FromQuery] int? pageSize = null)
+        [FromQuery] int? pageSize = null,
+        CancellationToken cancellationToken = default)
     {
         var advisorUserId = User.GetUserId();
-        var result = await _assignmentService.GetMyStudentsAsync(advisorUserId, searchColumn, searchTerm, pageNumber, pageSize);
+        var result = await _assignmentService.GetMyStudentsAsync(
+            advisorUserId, searchColumn, searchTerm, pageNumber, pageSize, cancellationToken);
 
         return result.ToResponse(HttpContext);
     }
@@ -43,9 +45,11 @@ public class AdvisorAssignmentsController : ControllerBase
     /// </summary>
     [HttpPost("bulk")]
     [Authorize(Roles = AppRoles.SuperAdmin)]
-    public async Task<IActionResult> BulkAssign([FromBody] BulkAssignStudentsDto dto)
+    public async Task<IActionResult> BulkAssign(
+        [FromBody] BulkAssignStudentsDto dto,
+        CancellationToken cancellationToken = default)
     {
-        var result = await _assignmentService.BulkAssignAsync(dto);
+        var result = await _assignmentService.BulkAssignAsync(dto, cancellationToken);
 
         return result.ToResponse(HttpContext);
     }
@@ -60,9 +64,11 @@ public class AdvisorAssignmentsController : ControllerBase
         [FromQuery] string? searchColumn = null,
         [FromQuery] string? searchTerm = null,
         [FromQuery] int? pageNumber = null,
-        [FromQuery] int? pageSize = null)
+        [FromQuery] int? pageSize = null,
+        CancellationToken cancellationToken = default)
     {
-        var result = await _assignmentService.GetAssignmentsByAdvisorAsync(advisorId, searchColumn, searchTerm, pageNumber, pageSize);
+        var result = await _assignmentService.GetAssignmentsByAdvisorAsync(
+            advisorId, searchColumn, searchTerm, pageNumber, pageSize, cancellationToken);
 
         return result.ToResponse(HttpContext);
     }
@@ -76,9 +82,11 @@ public class AdvisorAssignmentsController : ControllerBase
         [FromQuery] string? searchColumn = null,
         [FromQuery] string? searchTerm = null,
         [FromQuery] int? pageNumber = null,
-        [FromQuery] int? pageSize = null)
+        [FromQuery] int? pageSize = null,
+        CancellationToken cancellationToken = default)
     {
-        var result = await _assignmentService.GetAllAssignmentsAsync(searchColumn, searchTerm, pageNumber, pageSize);
+        var result = await _assignmentService.GetAllAssignmentsAsync(
+            searchColumn, searchTerm, pageNumber, pageSize, cancellationToken);
 
         return result.ToResponse(HttpContext);
     }
@@ -88,9 +96,11 @@ public class AdvisorAssignmentsController : ControllerBase
     /// </summary>
     [HttpDelete("{universityCode}")]
     [Authorize(Roles = AppRoles.SuperAdmin)]
-    public async Task<IActionResult> Remove(string universityCode)
+    public async Task<IActionResult> Remove(
+        string universityCode,
+        CancellationToken cancellationToken = default)
     {
-        var result = await _assignmentService.RemoveAssignmentAsync(universityCode);
+        var result = await _assignmentService.RemoveAssignmentAsync(universityCode, cancellationToken);
 
         return result.ToResponse(HttpContext);
     }
@@ -100,30 +110,39 @@ public class AdvisorAssignmentsController : ControllerBase
     /// </summary>
     [HttpPut("reassign")]
     [Authorize(Roles = AppRoles.SuperAdmin)]
-    public async Task<IActionResult> Reassign([FromBody] AssignStudentDto dto)
+    public async Task<IActionResult> Reassign(
+        [FromBody] AssignStudentDto dto,
+        CancellationToken cancellationToken = default)
     {
-        var result = await _assignmentService.ReassignAsync(dto);
+        var result = await _assignmentService.ReassignAsync(dto, cancellationToken);
 
         return result.ToResponse(HttpContext);
     }
 
     /// <summary>
     /// Import advisor-student assignments directly from an Excel file (.xlsx / .xls).
+    /// Enforces maximum file size limit (10MB).
     /// </summary>
     [HttpPost("import-excel")]
     [Authorize(Roles = AppRoles.SuperAdmin)]
     [Consumes("multipart/form-data")]
-    public async Task<IActionResult> ImportExcel(IFormFile file)
+    public async Task<IActionResult> ImportExcel(
+        IFormFile file,
+        CancellationToken cancellationToken = default)
     {
         if (file is null || file.Length == 0)
             return BadRequest(new { message = "الرجاء اختيار ملف Excel لرفعه." });
+
+        const long maxFileSize = 10 * 1024 * 1024; // 10 MB limit
+        if (file.Length > maxFileSize)
+            return BadRequest(new { message = "حجم الملف يتجاوز الحد الأقصى المسموح به (10 ميجابايت)." });
 
         var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (extension != ".xlsx" && extension != ".xls")
             return BadRequest(new { message = "صيغة الملف غير مدعومة. يجب رفع ملف Excel بصيغة .xlsx أو .xls" });
 
         using var stream = file.OpenReadStream();
-        var result = await _assignmentService.ImportFromExcelAsync(stream);
+        var result = await _assignmentService.ImportFromExcelAsync(stream, cancellationToken);
 
         return result.ToResponse(HttpContext);
     }

@@ -9,6 +9,23 @@ public class PaginatedList<T>
     public bool HasPreviousPage => PageNumber > 1;
     public bool HasNextPage => PageNumber < TotalPages;
 
+    /// <summary>
+    /// Constructor for data already paginated at the database level (Skip/Take in SQL).
+    /// Use this when you've already applied CountAsync + Skip + Take on IQueryable.
+    /// </summary>
+    public PaginatedList(List<T> items, int pageNumber, int totalCount, int pageSize)
+    {
+        Items = items;
+        PageNumber = pageNumber > 0 ? pageNumber : 1;
+        TotalCount = totalCount;
+        TotalPages = pageSize > 0
+            ? (int)Math.Ceiling(totalCount / (double)pageSize)
+            : 1;
+    }
+
+    /// <summary>
+    /// Legacy constructor for nullable parameters.
+    /// </summary>
     public PaginatedList(List<T> items, int? pageNumber, int count, int? pageSize)
     {
         Items = items;
@@ -19,6 +36,10 @@ public class PaginatedList<T>
             : 1;
     }
 
+    /// <summary>
+    /// Creates a PaginatedList by performing Skip/Take in memory.
+    /// Prefer database-level pagination (the constructor) for large datasets.
+    /// </summary>
     public static PaginatedList<T> Create(List<T> sourceItems, int? pageNumber, int? pageSize)
     {
         var count = sourceItems.Count;

@@ -7,6 +7,7 @@ using URMS.Application.Contracts.Persistence;
 using URMS.Application.DTOs.AdvisorAssignment;
 using URMS.Domain.Abstractions;
 using URMS.Domain.Entities;
+using URMS.Domain.Enums;
 
 namespace URMS.Infrastructure.Identity;
 
@@ -15,38 +16,46 @@ public class AdvisorAssignmentService : IAdvisorAssignmentService
     private readonly IUnitOfWork _unitOfWork;
     private readonly AppDbContext _context;
 
+    private const int DefaultPageSize = 20;
+    private const int MaxPageSize = 100;
+
     public AdvisorAssignmentService(IUnitOfWork unitOfWork, AppDbContext context)
     {
         _unitOfWork = unitOfWork;
         _context = context;
     }
 
-    public async Task<Result<int>> BulkAssignAsync(BulkAssignStudentsDto dto)
+    // ═══════════════════════════════════════════════════════════════
+    // Commands (Write Operations)
+    // ═══════════════════════════════════════════════════════════════
+
+    public async Task<Result<int>> BulkAssignAsync(
+        BulkAssignStudentsDto dto,
+        CancellationToken cancellationToken = default)
     {
         var assignmentRepo = _unitOfWork.Repository<AdvisorStudentAssignment>();
-        var userRepo = _unitOfWork.Repository<ApplicationUser>();
-        var studentRepo = _unitOfWork.Repository<Student>();
 
-        // Validate that the advisor exists
-        var advisor = await userRepo.FindOneAsync(
-            u => u.Id == dto.AdvisorId,
-            q => q.AsNoTracking().Include(u => u.Advisor)
-        );
+        // Validate advisor exists
+        var advisorExists = await _context.Users
+            .AsNoTracking()
+            .AnyAsync(u => u.Id == dto.AdvisorId && u.Advisor != null, cancellationToken);
 
-        if (advisor is null || advisor.Advisor is null)
+        if (!advisorExists)
             return Result.Failure<int>(new Error("Advisor.NotFound", "Advisor not found.", 404));
 
-        // ─── Batch fetch existing assignments to eliminate N+1 loop ───
-        var existingAssignedCodes = (await _context.Set<AdvisorStudentAssignment>()
+        // Batch fetch existing assignments to eliminate N+1
+        var existingAssignedCodes = await _context.AdvisorStudentAssignments
             .AsNoTracking()
             .Where(a => dto.UniversityCodes.Contains(a.UniversityCode))
             .Select(a => a.UniversityCode)
-            .ToListAsync()).ToHashSet();
+            .ToListAsync(cancellationToken);
 
-        // ─── Batch fetch registered students to eliminate N+1 loop ───
-        var registeredStudents = await _context.Set<Student>()
+        var existingSet = existingAssignedCodes.ToHashSet();
+
+        // Batch fetch registered students (only unassigned) for advisor linking
+        var registeredStudents = await _context.Students
             .Where(s => dto.UniversityCodes.Contains(s.UniversityCode) && s.AcademicAdvisorId == null)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         var registeredStudentsMap = registeredStudents.ToDictionary(s => s.UniversityCode);
 
@@ -54,7 +63,7 @@ public class AdvisorAssignmentService : IAdvisorAssignmentService
 
         foreach (var code in dto.UniversityCodes)
         {
-            if (existingAssignedCodes.Contains(code))
+            if (existingSet.Contains(code))
                 continue;
 
             await assignmentRepo.AddAsync(new AdvisorStudentAssignment
@@ -76,146 +85,9 @@ public class AdvisorAssignmentService : IAdvisorAssignmentService
         return Result.Success(addedCount);
     }
 
-    public async Task<Result<AdvisorAssignmentsGroupDto>> GetAssignmentsByAdvisorAsync(string advisorId, string? searchColumn = null, string? searchTerm = null, int? pageNumber = null, int? pageSize = null)
-    {
-        var assignmentRepo = _unitOfWork.Repository<AdvisorStudentAssignment>();
-        var userRepo = _unitOfWork.Repository<ApplicationUser>();
-        var studentRepo = _unitOfWork.Repository<Student>();
-
-        var advisor = await userRepo.FindOneAsync(
-            u => u.Id == advisorId,
-            q => q.AsNoTracking().Include(u => u.Advisor)
-        );
-
-        if (advisor is null || advisor.Advisor is null)
-            return Result.Failure<AdvisorAssignmentsGroupDto>(new Error("Advisor.NotFound", "Advisor not found.", 404));
-
-        var assignments = await _context.Set<AdvisorStudentAssignment>()
-            .AsNoTracking()
-            .Where(a => a.AdvisorId == advisorId)
-            .ToListAsync();
-
-        var codes = assignments.Select(a => a.UniversityCode).ToList();
-
-        var registeredStudents = await _context.Set<Student>()
-            .AsNoTracking()
-            .Include(s => s.User)
-            .Where(s => codes.Contains(s.UniversityCode))
-            .ToDictionaryAsync(s => s.UniversityCode);
-
-        var studentDtos = assignments.Select(a =>
-        {
-            var isReg = registeredStudents.TryGetValue(a.UniversityCode, out var student);
-            return new AssignedStudentDto(
-                a.Id,
-                a.UniversityCode,
-                isReg ? student?.User.FullNameAr : null,
-                isReg ? student?.User.FullNameEn : null,
-                isReg,
-                a.AssignedAt
-            );
-        }).ToList();
-
-        studentDtos = studentDtos.ApplySearch(searchColumn, searchTerm).ToList();
-
-        var paginatedStudents = PaginatedList<AssignedStudentDto>.Create(studentDtos, pageNumber, pageSize);
-
-        var groupDto = new AdvisorAssignmentsGroupDto(
-            advisor.Id,
-            advisor.FullNameAr,
-            advisor.FullNameEn,
-            advisor.Advisor.AdvisorCode,
-            advisor.Email!,
-            studentDtos.Count,
-            paginatedStudents
-        );
-
-        return Result.Success(groupDto);
-    }
-
-    public async Task<Result<PaginatedList<AdvisorAssignmentsGroupDto>>> GetAllAssignmentsAsync(string? searchColumn = null, string? searchTerm = null, int? pageNumber = null, int? pageSize = null)
-    {
-        var userRepo = _unitOfWork.Repository<ApplicationUser>();
-        var assignmentRepo = _unitOfWork.Repository<AdvisorStudentAssignment>();
-        var studentRepo = _unitOfWork.Repository<Student>();
-
-        var advisors = await _context.Set<ApplicationUser>()
-            .AsNoTracking()
-            .Include(u => u.Advisor)
-            .Where(u => u.UserType == URMS.Domain.Enums.UserType.AcademicAdvisor)
-            .ToListAsync();
-
-        var assignments = await assignmentRepo.GetAllAsync();
-        var assignmentsByAdvisor = assignments.GroupBy(a => a.AdvisorId)
-            .ToDictionary(g => g.Key, g => g.ToList());
-
-        var allCodes = assignments.Select(a => a.UniversityCode).Distinct().ToList();
-
-        var registeredStudents = await _context.Set<Student>()
-            .AsNoTracking()
-            .Include(s => s.User)
-            .Where(s => allCodes.Contains(s.UniversityCode))
-            .ToDictionaryAsync(s => s.UniversityCode);
-
-        var groupDtos = new List<AdvisorAssignmentsGroupDto>();
-
-        foreach (var adv in advisors)
-        {
-            var advAssignments = assignmentsByAdvisor.GetValueOrDefault(adv.Id, new List<AdvisorStudentAssignment>());
-
-            var studentDtos = advAssignments.Select(a =>
-            {
-                var isReg = registeredStudents.TryGetValue(a.UniversityCode, out var student);
-                return new AssignedStudentDto(
-                    a.Id,
-                    a.UniversityCode,
-                    isReg ? student?.User.FullNameAr : null,
-                    isReg ? student?.User.FullNameEn : null,
-                    isReg,
-                    a.AssignedAt
-                );
-            }).ToList();
-
-            if (!string.IsNullOrWhiteSpace(searchTerm))
-            {
-                var term = searchTerm.Trim().ToLower();
-                var matchesAdvisor = adv.FullNameAr.ToLower().Contains(term) ||
-                                     adv.FullNameEn.ToLower().Contains(term) ||
-                                     (adv.Email != null && adv.Email.ToLower().Contains(term)) ||
-                                     (adv.Advisor != null && adv.Advisor.AdvisorCode.ToLower().Contains(term));
-
-                if (!matchesAdvisor)
-                {
-                    studentDtos = studentDtos.Where(s =>
-                        s.UniversityCode.ToLower().Contains(term) ||
-                        (s.StudentNameAr != null && s.StudentNameAr.ToLower().Contains(term)) ||
-                        (s.StudentNameEn != null && s.StudentNameEn.ToLower().Contains(term))
-                    ).ToList();
-
-                    if (!studentDtos.Any())
-                        continue;
-                }
-            }
-
-            var paginatedStudents = PaginatedList<AssignedStudentDto>.Create(studentDtos, 1, 1000);
-
-            groupDtos.Add(new AdvisorAssignmentsGroupDto(
-                adv.Id,
-                adv.FullNameAr,
-                adv.FullNameEn,
-                adv.Advisor?.AdvisorCode ?? string.Empty,
-                adv.Email ?? string.Empty,
-                studentDtos.Count,
-                paginatedStudents
-            ));
-        }
-
-        var paginatedAdvisors = PaginatedList<AdvisorAssignmentsGroupDto>.Create(groupDtos, pageNumber, pageSize);
-
-        return Result.Success(paginatedAdvisors);
-    }
-
-    public async Task<Result> RemoveAssignmentAsync(string universityCode)
+    public async Task<Result> RemoveAssignmentAsync(
+        string universityCode,
+        CancellationToken cancellationToken = default)
     {
         var assignmentRepo = _unitOfWork.Repository<AdvisorStudentAssignment>();
 
@@ -228,10 +100,11 @@ public class AdvisorAssignmentService : IAdvisorAssignmentService
         return Result.Success();
     }
 
-    public async Task<Result> ReassignAsync(AssignStudentDto dto)
+    public async Task<Result> ReassignAsync(
+        AssignStudentDto dto,
+        CancellationToken cancellationToken = default)
     {
         var assignmentRepo = _unitOfWork.Repository<AdvisorStudentAssignment>();
-        var studentRepo = _unitOfWork.Repository<Student>();
 
         var assignment = await assignmentRepo.FindOneAsync(a => a.UniversityCode == dto.UniversityCode);
         if (assignment is null)
@@ -241,7 +114,9 @@ public class AdvisorAssignmentService : IAdvisorAssignmentService
         assignment.AssignedAt = DateTime.UtcNow;
 
         // Update the student too if already registered
-        var student = await studentRepo.FindOneAsync(s => s.UniversityCode == dto.UniversityCode);
+        var student = await _context.Students
+            .FirstOrDefaultAsync(s => s.UniversityCode == dto.UniversityCode, cancellationToken);
+
         if (student is not null)
         {
             student.AcademicAdvisorId = dto.AdvisorId;
@@ -251,50 +126,204 @@ public class AdvisorAssignmentService : IAdvisorAssignmentService
         return Result.Success();
     }
 
-    public async Task<Result<ImportExcelAssignmentsResponseDto>> ImportFromExcelAsync(Stream fileStream)
+    // ═══════════════════════════════════════════════════════════════
+    // Queries (Read Operations) — All use IQueryable SQL Pipeline
+    // ═══════════════════════════════════════════════════════════════
+
+    public async Task<Result<AdvisorAssignmentsGroupDto>> GetAssignmentsByAdvisorAsync(
+        string advisorId, string? searchColumn = null, string? searchTerm = null,
+        int? pageNumber = null, int? pageSize = null,
+        CancellationToken cancellationToken = default)
+    {
+        // 1. Validate advisor
+        var advisor = await _context.Users
+            .AsNoTracking()
+            .Include(u => u.Advisor)
+            .FirstOrDefaultAsync(u => u.Id == advisorId && u.Advisor != null, cancellationToken);
+
+        if (advisor is null)
+            return Result.Failure<AdvisorAssignmentsGroupDto>(
+                new Error("Advisor.NotFound", "Advisor not found.", 404));
+
+        // 2. Build IQueryable with LEFT JOIN — everything translates to SQL
+        var query = BuildAssignedStudentQuery()
+            .Where(dto => dto.AdvisorId == advisorId);
+
+        // 3. Apply dynamic search at SQL level
+        query = query.ApplySearch(searchColumn, searchTerm);
+
+        // 4. Count + Paginate at SQL level
+        query = query.OrderByDescending(x => x.AssignedAt);
+        var (projections, totalCount, pNum, pSize) = await PaginateAsync(query, pageNumber, pageSize, cancellationToken);
+        var items = projections.Select(x => x.ToDto()).ToList();
+
+        var paginated = new PaginatedList<AssignedStudentDto>(items, pNum, totalCount, pSize);
+
+        return Result.Success(new AdvisorAssignmentsGroupDto(
+            advisor.Id, advisor.FullNameAr, advisor.FullNameEn,
+            advisor.Advisor!.AdvisorCode, advisor.Email ?? string.Empty,
+            totalCount, paginated));
+    }
+
+    public async Task<Result<AdvisorMyStudentsResponseDto>> GetMyStudentsAsync(
+        string advisorUserId, string? searchColumn = null, string? searchTerm = null,
+        int? pageNumber = null, int? pageSize = null,
+        CancellationToken cancellationToken = default)
+    {
+        // 1. Validate advisor
+        var advisor = await _context.Users
+            .AsNoTracking()
+            .Include(u => u.Advisor)
+            .FirstOrDefaultAsync(u => u.Id == advisorUserId, cancellationToken);
+
+        if (advisor is null)
+            return Result.Failure<AdvisorMyStudentsResponseDto>(
+                new Error("Advisor.NotFound", "Advisor not found.", 404));
+
+        // 2. Build IQueryable with LEFT JOIN
+        var query = BuildMyStudentQuery()
+            .Where(dto => dto.AdvisorId == advisorUserId);
+
+        // 3. Apply dynamic search at SQL level
+        query = query.ApplySearch(searchColumn, searchTerm);
+
+        // 4. Counts at SQL level
+        var totalCount = await query.CountAsync(cancellationToken);
+        var registeredCount = await query.CountAsync(x => x.IsRegistered, cancellationToken);
+
+        // 5. Paginate at SQL level
+        var (pNum, pSize) = NormalizePagination(pageNumber, pageSize, totalCount);
+
+        var projections = await query
+            .OrderByDescending(x => x.AssignedAt)
+            .Skip((pNum - 1) * pSize)
+            .Take(pSize)
+            .ToListAsync(cancellationToken);
+
+        var items = projections.Select(x => x.ToDto()).ToList();
+        var paginated = new PaginatedList<AdvisorMyStudentItemDto>(items, pNum, totalCount, pSize);
+
+        return Result.Success(new AdvisorMyStudentsResponseDto(
+            advisor.Id, advisor.FullNameAr, advisor.FullNameEn,
+            advisor.Advisor?.AdvisorCode ?? string.Empty,
+            totalCount, registeredCount, totalCount - registeredCount, paginated));
+    }
+
+    public async Task<Result<PaginatedList<AdvisorAssignmentsGroupDto>>> GetAllAssignmentsAsync(
+        string? searchColumn = null, string? searchTerm = null,
+        int? pageNumber = null, int? pageSize = null,
+        CancellationToken cancellationToken = default)
+    {
+        // 1. Build advisor query
+        var advisorQuery = _context.Users
+            .AsNoTracking()
+            .Include(u => u.Advisor)
+            .Where(u => u.UserType == UserType.AcademicAdvisor);
+
+        // 2. Apply advisor-level search at SQL level
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var term = searchTerm.Trim();
+            advisorQuery = advisorQuery.Where(u =>
+                u.FirstNameAr.Contains(term) || u.LastNameAr.Contains(term) ||
+                u.FirstNameEn.Contains(term) || u.LastNameEn.Contains(term) ||
+                (u.Email != null && u.Email.Contains(term)) ||
+                (u.Advisor != null && u.Advisor.AdvisorCode.Contains(term)));
+        }
+
+        // 3. Paginate advisors at SQL level
+        var totalAdvisors = await advisorQuery.CountAsync(cancellationToken);
+        var (pNum, pSize) = NormalizePagination(pageNumber, pageSize, totalAdvisors);
+
+        var advisors = await advisorQuery
+            .OrderBy(u => u.FirstNameAr)
+            .Skip((pNum - 1) * pSize)
+            .Take(pSize)
+            .ToListAsync(cancellationToken);
+
+        // 4. Batch query: assignments for only this page of advisors (not entire DB)
+        var advisorIds = advisors.Select(a => a.Id).ToList();
+
+        var assignmentData = await (
+            from a in _context.AdvisorStudentAssignments.AsNoTracking()
+            where advisorIds.Contains(a.AdvisorId)
+            from s in _context.Students
+                .Where(s => s.UniversityCode == a.UniversityCode)
+                .DefaultIfEmpty()
+            orderby a.AssignedAt descending
+            select new
+            {
+                a.AdvisorId,
+                Dto = new AssignedStudentDto(
+                    a.Id,
+                    a.UniversityCode,
+                    s != null ? s.User.FirstNameAr + " " + s.User.LastNameAr : null,
+                    s != null ? s.User.FirstNameEn + " " + s.User.LastNameEn : null,
+                    s != null,
+                    a.AssignedAt)
+            }
+        ).ToListAsync(cancellationToken);
+
+        var byAdvisor = assignmentData
+            .GroupBy(x => x.AdvisorId)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.Dto).ToList());
+
+        // 5. Build grouped response
+        var groupDtos = advisors.Select(adv =>
+        {
+            var students = byAdvisor.GetValueOrDefault(adv.Id, []);
+            var paginated = PaginatedList<AssignedStudentDto>.Create(students, 1, 1000);
+
+            return new AdvisorAssignmentsGroupDto(
+                adv.Id, adv.FullNameAr, adv.FullNameEn,
+                adv.Advisor?.AdvisorCode ?? string.Empty,
+                adv.Email ?? string.Empty,
+                students.Count, paginated);
+        }).ToList();
+
+        var result = new PaginatedList<AdvisorAssignmentsGroupDto>(
+            groupDtos, pNum, totalAdvisors, pSize);
+
+        return Result.Success(result);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Excel Import
+    // ═══════════════════════════════════════════════════════════════
+
+    public async Task<Result<ImportExcelAssignmentsResponseDto>> ImportFromExcelAsync(
+        Stream fileStream,
+        CancellationToken cancellationToken = default)
     {
         System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
 
-        var assignmentRepo = _unitOfWork.Repository<AdvisorStudentAssignment>();
-        var userRepo = _unitOfWork.Repository<ApplicationUser>();
-        var studentRepo = _unitOfWork.Repository<Student>();
-
-        // 1. Fetch all Advisors (ApplicationUser where UserType == AcademicAdvisor)
-        var advisors = await _context.Set<ApplicationUser>()
+        // 1. Fetch advisors (small bounded table — safe to load)
+        var advisors = await _context.Users
             .AsNoTracking()
-            .Where(u => u.UserType == URMS.Domain.Enums.UserType.AcademicAdvisor)
-            .ToListAsync();
+            .Where(u => u.UserType == UserType.AcademicAdvisor)
+            .Select(u => new { u.Id, u.FirstNameAr, u.SecondNameAr, u.ThirdNameAr, u.LastNameAr })
+            .ToListAsync(cancellationToken);
 
         if (!advisors.Any())
         {
             return Result.Failure<ImportExcelAssignmentsResponseDto>(new Error(
                 "Advisor.NoAdvisorsFound",
                 "No Academic Advisors found in the database. Please create advisors first.",
-                400
-            ));
+                400));
         }
 
-        // Build a normalized lookup dictionary for advisors by Arabic Full Name
+        // Build normalized lookup (exact match only — no fuzzy matching)
         var advisorMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var adv in advisors)
         {
-            var normName = NormalizeArabicName(adv.FullNameAr);
-            if (!string.IsNullOrEmpty(normName) && !advisorMap.ContainsKey(normName))
-            {
-                advisorMap[normName] = adv.Id;
-            }
+            var fullName = string.Join(" ", new[] { adv.FirstNameAr, adv.SecondNameAr, adv.ThirdNameAr, adv.LastNameAr }
+                .Where(n => !string.IsNullOrWhiteSpace(n)));
+            var normName = NormalizeArabicName(fullName);
+            advisorMap.TryAdd(normName, adv.Id);
         }
 
-        // Fetch existing assignments & registered students into memory dictionaries
-        var existingAssignments = (await assignmentRepo.GetAllAsync())
-            .ToDictionary(a => a.UniversityCode, a => a);
-
-        var registeredStudents = (await studentRepo.GetAllAsync())
-            .ToDictionary(s => s.UniversityCode, s => s);
-
-        int totalProcessed = 0;
-        int successful = 0;
-        int skipped = 0;
+        // 2. Read all rows from Excel (single pass)
+        var rows = new List<(int RowIndex, string AdvisorName, string Code)>();
         var errors = new List<string>();
 
         using var reader = ExcelReaderFactory.CreateReader(fileStream);
@@ -302,59 +331,66 @@ public class AdvisorAssignmentService : IAdvisorAssignmentService
 
         while (reader.Read())
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             rowIndex++;
+            if (rowIndex == 1) continue; // Skip header
 
-            // Skip Header row (Row 1)
-            if (rowIndex == 1) continue;
-
-            // Column A (0): Advisor Name ("المرشد")
-            // Column B (1): Student Name ("الاسم")
-            // Column C (2): Student Code ("كود")
             var advisorNameRaw = reader.GetValue(0)?.ToString()?.Trim();
             var studentNameRaw = reader.GetValue(1)?.ToString()?.Trim();
             var codeRaw = reader.GetValue(2)?.ToString()?.Trim();
 
-            // If Code is missing in Column C (Index 2), but present in Column B (Index 1) as digits
-            if (string.IsNullOrWhiteSpace(codeRaw) && !string.IsNullOrWhiteSpace(studentNameRaw) && studentNameRaw.All(char.IsDigit))
+            // Handle code in wrong column
+            if (string.IsNullOrWhiteSpace(codeRaw) && !string.IsNullOrWhiteSpace(studentNameRaw)
+                && studentNameRaw.All(char.IsDigit))
             {
                 codeRaw = studentNameRaw;
             }
 
+            // Skip empty rows
             if (string.IsNullOrWhiteSpace(advisorNameRaw) && string.IsNullOrWhiteSpace(codeRaw))
-            {
-                // Empty row, skip silently
                 continue;
-            }
-
-            totalProcessed++;
 
             if (string.IsNullOrWhiteSpace(advisorNameRaw))
-            {
-                errors.Add($"الصف {rowIndex}: اسم المرشد غير موجود.");
-                continue;
-            }
+            { errors.Add($"الصف {rowIndex}: اسم المرشد غير موجود."); continue; }
 
             if (string.IsNullOrWhiteSpace(codeRaw))
+            { errors.Add($"الصف {rowIndex}: كود الطالب غير موجود."); continue; }
+
+            rows.Add((rowIndex, advisorNameRaw, codeRaw));
+        }
+
+        if (rows.Count == 0)
+        {
+            return Result.Success(new ImportExcelAssignmentsResponseDto(0, 0, 0, errors));
+        }
+
+        // 3. Batch-fetch only the relevant codes (not entire tables)
+        var allCodes = rows.Select(r => r.Code).Distinct().ToList();
+
+        var existingAssignments = await _context.AdvisorStudentAssignments
+            .Where(a => allCodes.Contains(a.UniversityCode))
+            .ToDictionaryAsync(a => a.UniversityCode, cancellationToken);
+
+        var registeredStudents = await _context.Students
+            .Where(s => allCodes.Contains(s.UniversityCode))
+            .ToDictionaryAsync(s => s.UniversityCode, cancellationToken);
+
+        // 4. Process rows
+        var assignmentRepo = _unitOfWork.Repository<AdvisorStudentAssignment>();
+        int totalProcessed = 0, successful = 0, skipped = 0;
+
+        foreach (var (ri, advisorNameRaw, codeRaw) in rows)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            totalProcessed++;
+            var normName = NormalizeArabicName(advisorNameRaw);
+
+            if (!advisorMap.TryGetValue(normName, out var advisorId))
             {
-                errors.Add($"الصف {rowIndex}: كود الطالب غير موجود.");
+                errors.Add($"الصف {ri}: لم يتم العثور على المرشد الأكاديمي [{advisorNameRaw}] في النظام.");
                 continue;
-            }
-
-            var normAdvisorName = NormalizeArabicName(advisorNameRaw);
-
-            if (!advisorMap.TryGetValue(normAdvisorName, out var advisorId))
-            {
-                // Try fuzzy/partial match if exact normalized match fails
-                var matchedAdvisor = advisorMap.FirstOrDefault(kvp => kvp.Key.Contains(normAdvisorName) || normAdvisorName.Contains(kvp.Key));
-                if (!string.IsNullOrEmpty(matchedAdvisor.Value))
-                {
-                    advisorId = matchedAdvisor.Value;
-                }
-                else
-                {
-                    errors.Add($"الصف {rowIndex}: لم يتم العثور على المرشد الأكاديمي [{advisorNameRaw}] في النظام.");
-                    continue;
-                }
             }
 
             // Assign or update
@@ -384,7 +420,7 @@ public class AdvisorAssignmentService : IAdvisorAssignmentService
                 successful++;
             }
 
-            // Also update registered student if present
+            // Update registered student if present
             if (registeredStudents.TryGetValue(codeRaw, out var student))
             {
                 student.AcademicAdvisorId = advisorId;
@@ -394,78 +430,85 @@ public class AdvisorAssignmentService : IAdvisorAssignmentService
         await _unitOfWork.CompleteAsync();
 
         return Result.Success(new ImportExcelAssignmentsResponseDto(
-            totalProcessed,
-            successful,
-            skipped,
-            errors
-        ));
+            totalProcessed, successful, skipped, errors));
     }
 
-    public async Task<Result<AdvisorMyStudentsResponseDto>> GetMyStudentsAsync(string advisorUserId, string? searchColumn = null, string? searchTerm = null, int? pageNumber = null, int? pageSize = null)
+    // ═══════════════════════════════════════════════════════════════
+    // Private Helpers — Reusable IQueryable Builders
+    // ═══════════════════════════════════════════════════════════════
+
+    private IQueryable<AssignedStudentProjection> BuildAssignedStudentQuery()
     {
-        var assignmentRepo = _unitOfWork.Repository<AdvisorStudentAssignment>();
-        var userRepo = _unitOfWork.Repository<ApplicationUser>();
-        var studentRepo = _unitOfWork.Repository<Student>();
+        return from a in _context.AdvisorStudentAssignments.AsNoTracking()
+               from s in _context.Students
+                   .Where(s => s.UniversityCode == a.UniversityCode)
+                   .DefaultIfEmpty()
+               select new AssignedStudentProjection
+               {
+                   AdvisorId = a.AdvisorId,
+                   AssignmentId = a.Id,
+                   UniversityCode = a.UniversityCode,
+                   StudentNameAr = s != null ? s.User.FirstNameAr + " " + s.User.LastNameAr : null,
+                   StudentNameEn = s != null ? s.User.FirstNameEn + " " + s.User.LastNameEn : null,
+                   IsStudentRegistered = s != null,
+                   AssignedAt = a.AssignedAt
+               };
+    }
 
-        var advisor = await userRepo.FindOneAsync(
-            u => u.Id == advisorUserId,
-            q => q.AsNoTracking().Include(u => u.Advisor)
-        );
+    private IQueryable<MyStudentProjection> BuildMyStudentQuery()
+    {
+        return from a in _context.AdvisorStudentAssignments.AsNoTracking()
+               from s in _context.Students
+                   .Where(s => s.UniversityCode == a.UniversityCode)
+                   .DefaultIfEmpty()
+               select new MyStudentProjection
+               {
+                   AdvisorId = a.AdvisorId,
+                   AssignmentId = a.Id,
+                   UniversityCode = a.UniversityCode,
+                   IsRegistered = s != null,
+                   AssignedAt = a.AssignedAt,
+                   StudentId = s != null ? s.Id.ToString() : null,
+                   FullNameAr = s != null ? s.User.FirstNameAr + " " + s.User.LastNameAr : null,
+                   FullNameEn = s != null ? s.User.FirstNameEn + " " + s.User.LastNameEn : null,
+                   NationalId = s != null ? s.NationalId : null,
+                   Email = s != null ? s.User.Email : null,
+                   PhoneNumber = s != null ? s.User.PhoneNumber : null,
+                   AlternatePhone = s != null ? s.User.AlternatePhone : null,
+                   Address = s != null ? s.Address : null
+               };
+    }
 
-        if (advisor is null)
-            return Result.Failure<AdvisorMyStudentsResponseDto>(new Error("Advisor.NotFound", "Advisor not found.", 404));
+    private async Task<(List<T> Items, int TotalCount, int PageNum, int PageSize)> PaginateAsync<T>(
+        IQueryable<T> query, int? pageNumber, int? pageSize,
+        CancellationToken cancellationToken = default) where T : class
+    {
+        var totalCount = await query.CountAsync(cancellationToken);
+        var (pNum, pSize) = NormalizePagination(pageNumber, pageSize, totalCount);
 
-        var assignments = await _context.Set<AdvisorStudentAssignment>()
-            .AsNoTracking()
-            .Where(a => a.AdvisorId == advisorUserId)
-            .ToListAsync();
+        var items = await query
+            .Skip((pNum - 1) * pSize)
+            .Take(pSize)
+            .ToListAsync(cancellationToken);
 
-        var codes = assignments.Select(a => a.UniversityCode).ToList();
+        return (items, totalCount, pNum, pSize);
+    }
 
-        var registeredStudents = await _context.Set<Student>()
-            .AsNoTracking()
-            .Include(s => s.User)
-            .Where(s => codes.Contains(s.UniversityCode))
-            .ToDictionaryAsync(s => s.UniversityCode);
+    private static (int PageNum, int PageSize) NormalizePagination(
+        int? pageNumber, int? pageSize, int totalCount)
+    {
+        var pSize = pageSize is > 0
+            ? Math.Min(pageSize.Value, MaxPageSize)
+            : DefaultPageSize;
 
-        var allItems = assignments.Select(a =>
+        var pNum = pageNumber is > 0 ? pageNumber.Value : 1;
+
+        if (!pageNumber.HasValue && !pageSize.HasValue)
         {
-            var isReg = registeredStudents.TryGetValue(a.UniversityCode, out var student);
-            return new AdvisorMyStudentItemDto(
-                a.Id,
-                a.UniversityCode,
-                isReg,
-                a.AssignedAt,
-                isReg ? student?.Id.ToString() : null,
-                isReg ? student?.User.FullNameAr : null,
-                isReg ? student?.User.FullNameEn : null,
-                isReg ? student?.NationalId : null,
-                isReg ? student?.User.Email : null,
-                isReg ? student?.User.PhoneNumber : null,
-                isReg ? student?.User.AlternatePhone : null,
-                isReg ? student?.Address : null
-            );
-        }).ToList();
+            pSize = totalCount > 0 ? totalCount : 1;
+        }
 
-        allItems = allItems.ApplySearch(searchColumn, searchTerm).ToList();
-
-        var registeredCount = allItems.Count(s => s.IsRegistered);
-        var unregisteredCount = allItems.Count - registeredCount;
-
-        var paginatedStudents = PaginatedList<AdvisorMyStudentItemDto>.Create(allItems, pageNumber, pageSize);
-
-        var response = new AdvisorMyStudentsResponseDto(
-            advisor.Id,
-            advisor.FullNameAr,
-            advisor.FullNameEn,
-            advisor.Advisor?.AdvisorCode ?? string.Empty,
-            allItems.Count,
-            registeredCount,
-            unregisteredCount,
-            paginatedStudents
-        );
-
-        return Result.Success(response);
+        return (pNum, pSize);
     }
 
     private static string NormalizeArabicName(string name)
@@ -475,5 +518,46 @@ public class AdvisorAssignmentService : IAdvisorAssignmentService
             .Replace('أ', 'ا').Replace('إ', 'ا').Replace('آ', 'ا')
             .Replace('ى', 'ي').Replace('ة', 'ه')
             .Replace("  ", " ");
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Internal Projection Classes
+    // ═══════════════════════════════════════════════════════════════
+
+    private class AssignedStudentProjection
+    {
+        public string AdvisorId { get; init; } = default!;
+        public int AssignmentId { get; init; }
+        public string UniversityCode { get; init; } = default!;
+        public string? StudentNameAr { get; init; }
+        public string? StudentNameEn { get; init; }
+        public bool IsStudentRegistered { get; init; }
+        public DateTime AssignedAt { get; init; }
+
+        public AssignedStudentDto ToDto() => new(
+            AssignmentId, UniversityCode, StudentNameAr,
+            StudentNameEn, IsStudentRegistered, AssignedAt);
+    }
+
+    private class MyStudentProjection
+    {
+        public string AdvisorId { get; init; } = default!;
+        public int AssignmentId { get; init; }
+        public string UniversityCode { get; init; } = default!;
+        public bool IsRegistered { get; init; }
+        public DateTime AssignedAt { get; init; }
+        public string? StudentId { get; init; }
+        public string? FullNameAr { get; init; }
+        public string? FullNameEn { get; init; }
+        public string? NationalId { get; init; }
+        public string? Email { get; init; }
+        public string? PhoneNumber { get; init; }
+        public string? AlternatePhone { get; init; }
+        public string? Address { get; init; }
+
+        public AdvisorMyStudentItemDto ToDto() => new(
+            AssignmentId, UniversityCode, IsRegistered, AssignedAt,
+            StudentId, FullNameAr, FullNameEn, NationalId,
+            Email, PhoneNumber, AlternatePhone, Address);
     }
 }
