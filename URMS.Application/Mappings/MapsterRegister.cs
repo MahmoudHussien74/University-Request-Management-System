@@ -1,7 +1,4 @@
-using Mapster;
 using URMS.Application.DTOs.Auth;
-using URMS.Application.DTOs.Requests;
-using URMS.Domain.Entities;
 
 namespace URMS.Application.Mappings;
 

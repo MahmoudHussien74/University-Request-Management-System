@@ -1,7 +1,4 @@
-using URMS.Domain.Abstractions;
 using URMS.Domain.Common;
-using URMS.Domain.Constants;
-using URMS.Domain.Enums;
 
 namespace URMS.Domain.Entities;
 

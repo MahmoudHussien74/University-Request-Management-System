@@ -1,8 +1,5 @@
 using FluentValidation;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
-using URMS.Application.Common.Models;
-using URMS.Application.Contracts.Infrastructure;
 
 namespace URMS.Api.Middleware;
 

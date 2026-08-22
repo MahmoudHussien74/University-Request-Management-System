@@ -1,10 +1,4 @@
 using URMS.Application.Common.Helpers;
-using URMS.Application.Common.Pagination;
-using URMS.Application.Contracts.Persistence;
-using URMS.Application.Contracts.Requests;
-using URMS.Application.DTOs.Requests;
-using URMS.Domain.Abstractions;
-using URMS.Domain.Enums;
 
 namespace URMS.Application.Services;
 

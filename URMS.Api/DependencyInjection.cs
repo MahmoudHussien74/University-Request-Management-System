@@ -42,7 +42,6 @@ public static class DependencyInjection
         services.AddControllers(options =>
         {
             options.Filters.Add<ValidationFilter>();
-            options.Filters.Add<CsrfHeaderFilter>();
         })
         .AddJsonOptions(options =>
         {

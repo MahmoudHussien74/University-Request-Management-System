@@ -1,9 +1,4 @@
-using System.Security.Claims;
-using Microsoft.AspNetCore.Mvc;
-using URMS.Api.Extensions;
 using URMS.Application.Contracts.Identity;
-using URMS.Application.DTOs.Auth;
-using URMS.Domain.Constants;
 using URMS.Api.Authorization;
 
 namespace URMS.Api.Controllers;

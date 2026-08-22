@@ -3,8 +3,6 @@ using System.Net.Mail;
 using Microsoft.Extensions.Options;
 using URMS.Application.Settings;
 
-using URMS.Application.Contracts.Infrastructure;
-
 namespace URMS.Infrastructure.Services;
 
 public class EmailService : IEmailService

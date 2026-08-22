@@ -1,5 +1,4 @@
 using URMS.Domain.Common;
-using URMS.Domain.Enums;
 
 namespace URMS.Domain.Entities;
 

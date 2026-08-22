@@ -12,5 +12,5 @@ public class EmailSettings
     public string FromName { get; set; } = "URMS";
     public string FromAddress { get; set; } = default!;
     public string ExternalAdministrationBaseUrl { get; set; } = default!;
-    public int ExternalAdministrationOtpTtlMinutes { get; set; } = 15;
+    public int ExternalAdministrationOtpTtlMinutes { get; set; } = 2880;
 }
