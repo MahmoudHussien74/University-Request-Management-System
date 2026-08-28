@@ -1,34 +1,52 @@
 using System.Net;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using URMS.Application.Contracts.Infrastructure;
+using URMS.Application.Contracts.Persistence;
 using URMS.Application.Contracts.Requests;
-using URMS.Application.DTOs.Requests;
-using URMS.Domain.Abstractions;
-using URMS.Domain.Constants;
 using URMS.Domain.Entities;
 
 namespace URMS.Application.Services;
 
+/// <summary>
+/// Handles email notifications as Hangfire background jobs.
+/// Loads request data from DB independently since it runs outside the original HTTP scope.
+/// </summary>
 public class RequestNotificationService : IRequestNotificationService
 {
     private readonly IEmailService _emailService;
+    private readonly IUniversityRequestRepository _requestRepo;
     private readonly EmailSettings _emailSettings;
+    private readonly ILogger<RequestNotificationService> _logger;
 
     public RequestNotificationService(
         IEmailService emailService,
-        IOptions<EmailSettings> emailOptions)
+        IUniversityRequestRepository requestRepo,
+        IOptions<EmailSettings> emailOptions,
+        ILogger<RequestNotificationService> logger)
     {
         _emailService = emailService;
+        _requestRepo = requestRepo;
         _emailSettings = emailOptions.Value;
+        _logger = logger;
     }
 
-    public async Task<Result> SendExternalAdministrationEmailAsync(
-        UniversityRequest request,
-        SendRequestToAdministrationDto dto,
+    public async Task SendExternalAdministrationEmailAsync(
+        int requestId,
+        string administrationEmail,
+        string? advisorMessage,
         string otpCode,
         string reviewLink)
     {
+        // Load request from DB (this runs in a background scope, not the original HTTP request)
+        var request = await _requestRepo.GetForAdministrationSendAsync(requestId);
+        if (request is null)
+        {
+            _logger.LogWarning("Background email job: Request {RequestId} not found — may have been deleted", requestId);
+            return;
+        }
+
         Dictionary<string, string>? additionalData = null;
         if (!string.IsNullOrEmpty(request.AdditionalDataJson))
         {
@@ -36,7 +54,7 @@ public class RequestNotificationService : IRequestNotificationService
             {
                 additionalData = JsonSerializer.Deserialize<Dictionary<string, string>>(request.AdditionalDataJson);
             }
-            catch
+            catch (JsonException)
             {
                 additionalData = null;
             }
@@ -52,22 +70,18 @@ public class RequestNotificationService : IRequestNotificationService
             <p><strong>Student Name:</strong> {studentName}</p>
             <p><strong>Request Type:</strong> {formTitle}</p>
             {answersHtml}
-            <p><strong>Advisor Message:</strong> {WebUtility.HtmlEncode(dto.Message ?? string.Empty)}</p>
+            <p><strong>Advisor Message:</strong> {WebUtility.HtmlEncode(advisorMessage ?? string.Empty)}</p>
             <p><strong>Verification Code:</strong> {otpCode}</p>
             <p>This code expires after {_emailSettings.ExternalAdministrationOtpTtlMinutes} minutes.</p>
             <p>You may review and respond to this request using the following link:</p>
             <p><a href='{reviewLink}'>Review & Respond to Request</a></p>
         ";
 
-        try
-        {
-            await _emailService.SendEmailAsync(dto.AdministrationEmail, subject, body);
-            return Result.Success();
-        }
-        catch
-        {
-            return Result.Failure(RequestErrors.EmailSendingFailed);
-        }
+        await _emailService.SendEmailAsync(administrationEmail, subject, body);
+
+        _logger.LogInformation(
+            "External administration email sent for request {RequestId} to {Email}",
+            requestId, administrationEmail);
     }
 
     private static string BuildAdditionalDataHtml(FormDefinition? formDefinition, Dictionary<string, string>? additionalData)

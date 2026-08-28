@@ -1,3 +1,4 @@
+using Hangfire;
 using URMS.Api;
 using URMS.Application;
 using URMS.Infrastructure;
@@ -31,6 +32,11 @@ app.UseRateLimiter();
 app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    Authorization = new[] { new URMS.Infrastructure.Hangfire.HangfireAdminAuthFilter() }
+});
 
 app.MapControllers();
 

@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.Extensions.Logging;
 using URMS.Application.Common.Helpers;
 
@@ -8,7 +9,7 @@ public class RequestWorkflowService : IRequestWorkflowService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IUniversityRequestRepository _requestRepo;
     private readonly IOtpService _otpService;
-    private readonly IRequestNotificationService _notificationService;
+    private readonly IBackgroundJobClient _backgroundJobs;
     private readonly EmailSettings _emailSettings;
     private readonly ILogger<RequestWorkflowService> _logger;
 
@@ -16,14 +17,14 @@ public class RequestWorkflowService : IRequestWorkflowService
         IUnitOfWork unitOfWork,
         IUniversityRequestRepository requestRepo,
         IOtpService otpService,
-        IRequestNotificationService notificationService,
+        IBackgroundJobClient backgroundJobs,
         IOptions<EmailSettings> emailOptions,
         ILogger<RequestWorkflowService> logger)
     {
         _unitOfWork = unitOfWork;
         _requestRepo = requestRepo;
         _otpService = otpService;
-        _notificationService = notificationService;
+        _backgroundJobs = backgroundJobs;
         _emailSettings = emailOptions.Value;
         _logger = logger;
     }
@@ -68,17 +69,20 @@ public class RequestWorkflowService : IRequestWorkflowService
         if (result.IsFailure)
             return Result.Failure<UniversityRequestResponseDto>(result.Error);
 
-        // Infrastructure: send email
+        // Save FIRST — ensures DB state is consistent before sending email
+        await _unitOfWork.CompleteAsync();
+
+        // Enqueue background email job — does NOT block HTTP response
         var requestUrl = _emailSettings.ExternalAdministrationBaseUrl.TrimEnd('/');
         var reviewLink = $"{requestUrl}/{confirmationToken}";
 
-        var sendEmailResult = await _notificationService.SendExternalAdministrationEmailAsync(request, dto, otpCode, reviewLink);
-        if (sendEmailResult.IsFailure)
-        {
-            return Result.Failure<UniversityRequestResponseDto>(sendEmailResult.Error);
-        }
+        _backgroundJobs.Enqueue<IRequestNotificationService>(
+            svc => svc.SendExternalAdministrationEmailAsync(
+                request.Id, dto.AdministrationEmail, dto.Message, otpCode, reviewLink));
 
-        await _unitOfWork.CompleteAsync();
+        _logger.LogInformation(
+            "Request {RequestId} sent to administration {Email} by advisor {AdvisorId} — email job enqueued",
+            requestId, dto.AdministrationEmail, advisorId);
 
         var advisor = await _requestRepo.GetUserByIdAsync(advisorId);
         return Result.Success(request.MapToDto(request.Student, advisor, null));
