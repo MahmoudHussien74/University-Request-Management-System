@@ -157,6 +157,9 @@ public static class DependencyInjection
         services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
         services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
+        // ─── 7. Background Services ───
+        services.AddHostedService<URMS.Infrastructure.Services.RefreshTokenCleanupService>();
+
         return services;
     }
 }

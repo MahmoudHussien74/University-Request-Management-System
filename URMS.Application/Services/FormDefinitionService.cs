@@ -95,7 +95,8 @@ public class FormDefinitionService : IFormDefinitionService
 
         await _unitOfWork.CompleteAsync();
 
-        return Result.Success(MapToResponseDto(form, form.Requests?.Count ?? 0));
+        var requestsCount = await _formRepo.GetRequestCountAsync(form.Id);
+        return Result.Success(MapToResponseDto(form, requestsCount));
     }
 
     public async Task<Result<FormDefinitionResponseDto>> ToggleFormStatusAsync(int id, ToggleFormStatusDto dto)
@@ -119,7 +120,8 @@ public class FormDefinitionService : IFormDefinitionService
 
         await _unitOfWork.CompleteAsync();
 
-        return Result.Success(MapToResponseDto(form, form.Requests?.Count ?? 0));
+        var requestsCount = await _formRepo.GetRequestCountAsync(form.Id);
+        return Result.Success(MapToResponseDto(form, requestsCount));
     }
 
     public async Task<Result<bool>> DeleteFormAsync(int id)
@@ -217,22 +219,27 @@ public class FormDefinitionService : IFormDefinitionService
         if (form is null)
             return Result.Failure<FormDefinitionResponseDto>(FormErrors.FormNotFound);
 
-        return Result.Success(MapToResponseDto(form, form.Requests?.Count ?? 0));
+        var requestsCount = await _formRepo.GetRequestCountAsync(form.Id);
+        return Result.Success(MapToResponseDto(form, requestsCount));
     }
 
     public async Task<Result<List<FormDefinitionResponseDto>>> GetAllAdminFormsAsync()
     {
         var forms = await _formRepo.GetAllForAdminAsync();
+        var formIds = forms.Select(f => f.Id).ToList();
+        var requestCounts = await _formRepo.GetRequestCountsByFormIdsAsync(formIds);
 
-        return Result.Success(forms.Select(f => MapToResponseDto(f, f.Requests?.Count ?? 0)).ToList());
+        return Result.Success(forms.Select(f => MapToResponseDto(f, requestCounts.GetValueOrDefault(f.Id, 0))).ToList());
     }
 
     public async Task<Result<List<FormDefinitionResponseDto>>> GetActiveStudentFormsAsync()
     {
         var now = DateTime.UtcNow;
         var forms = await _formRepo.GetActiveForStudentsAsync(now);
+        var formIds = forms.Select(f => f.Id).ToList();
+        var requestCounts = await _formRepo.GetRequestCountsByFormIdsAsync(formIds);
 
-        return Result.Success(forms.Select(f => MapToResponseDto(f, f.Requests?.Count ?? 0)).ToList());
+        return Result.Success(forms.Select(f => MapToResponseDto(f, requestCounts.GetValueOrDefault(f.Id, 0))).ToList());
     }
 
     public async Task<Result<List<FormSummaryDto>>> GetLandingPageFormsAsync()

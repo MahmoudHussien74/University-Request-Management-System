@@ -36,4 +36,15 @@ public interface IFormDefinitionRepository : IGenericRepository<FormDefinition>
     /// Retrieves active, non-deleted forms within date range, projected to lightweight summary DTOs.
     /// </summary>
     Task<List<FormSummaryDto>> GetActiveSummariesAsync(DateTime now);
+
+    /// <summary>
+    /// Gets request counts for multiple form IDs in a single batch SQL query.
+    /// Replaces the need to Include(f => f.Requests) just for counting.
+    /// </summary>
+    Task<Dictionary<int, int>> GetRequestCountsByFormIdsAsync(List<int> formIds);
+
+    /// <summary>
+    /// Gets request count for a single form ID.
+    /// </summary>
+    Task<int> GetRequestCountAsync(int formId);
 }

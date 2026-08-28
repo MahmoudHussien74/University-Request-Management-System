@@ -74,6 +74,8 @@ public class UniversityRequestRepository : GenericRepository<UniversityRequest>,
     public async Task<UniversityRequest?> GetByTokenWithDetailsAsync(string token)
     {
         return await GetQueryable()
+            .AsNoTracking()
+            .AsSplitQuery()
             .Include(r => r.Student).ThenInclude(u => u.Student)
             .Include(r => r.FormDefinition)
             .Include(r => r.Advisor)
@@ -104,6 +106,8 @@ public class UniversityRequestRepository : GenericRepository<UniversityRequest>,
     public async Task<UniversityRequest?> GetByTokenForWorkflowAsync(string token)
     {
         return await GetQueryable()
+            .AsNoTracking()
+            .AsSplitQuery()
             .Include(r => r.Student).ThenInclude(u => u.Student)
             .Include(r => r.FormDefinition)
             .Include(r => r.Advisor)

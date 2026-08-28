@@ -14,7 +14,6 @@ public class FormDefinitionRepository : GenericRepository<FormDefinition>, IForm
     {
         return await GetQueryable()
             .Include(f => f.Fields.OrderBy(field => field.Order))
-            .Include(f => f.Requests)
             .FirstOrDefaultAsync(f => f.Id == id && !f.IsDeleted);
     }
 
@@ -30,7 +29,6 @@ public class FormDefinitionRepository : GenericRepository<FormDefinition>, IForm
         return await GetQueryable()
             .AsNoTracking()
             .Include(f => f.Fields.OrderBy(field => field.Order))
-            .Include(f => f.Requests)
             .Where(f => !f.IsDeleted)
             .OrderByDescending(f => f.CreatedAt)
             .ToListAsync();
@@ -41,7 +39,6 @@ public class FormDefinitionRepository : GenericRepository<FormDefinition>, IForm
         return await GetQueryable()
             .AsNoTracking()
             .Include(f => f.Fields.OrderBy(field => field.Order))
-            .Include(f => f.Requests)
             .Where(f => f.IsActive && !f.IsDeleted &&
                  (!f.StartDate.HasValue || f.StartDate.Value <= now) &&
                  (!f.EndDate.HasValue || f.EndDate.Value >= now))
@@ -67,5 +64,22 @@ public class FormDefinitionRepository : GenericRepository<FormDefinition>, IForm
                 f.EndDate,
                 f.Requests.Count))
             .ToListAsync();
+    }
+
+    public async Task<Dictionary<int, int>> GetRequestCountsByFormIdsAsync(List<int> formIds)
+    {
+        return await _context.UniversityRequests
+            .AsNoTracking()
+            .Where(r => r.FormDefinitionId.HasValue && formIds.Contains(r.FormDefinitionId.Value))
+            .GroupBy(r => r.FormDefinitionId!.Value)
+            .Select(g => new { FormId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.FormId, x => x.Count);
+    }
+
+    public async Task<int> GetRequestCountAsync(int formId)
+    {
+        return await _context.UniversityRequests
+            .AsNoTracking()
+            .CountAsync(r => r.FormDefinitionId == formId);
     }
 }
