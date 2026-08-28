@@ -94,7 +94,7 @@ public class UniversityRequest : AuditableEntity
         if (Status == RequestStatus.Completed || Status == RequestStatus.Rejected)
             return Result.Failure(RequestErrors.InvalidStatusForSendEmail);
 
-        if (Status != RequestStatus.AdvisorApproved)
+        if (Status != RequestStatus.AdvisorApproved && Status != RequestStatus.SentToAdministration)
             return Result.Failure(RequestErrors.InvalidStatusForSendEmail);
 
         var oldStatus = Status;
