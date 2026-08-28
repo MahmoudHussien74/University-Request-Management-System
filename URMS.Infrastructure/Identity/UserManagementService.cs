@@ -271,8 +271,10 @@ public class UserManagementService : IUserManagementService
             EmailConfirmed = true
         };
 
-        var password = string.IsNullOrWhiteSpace(dto.Password) ? "Advisor@123" : dto.Password;
-        var createResult = await _userManager.CreateAsync(user, password);
+        if (string.IsNullOrWhiteSpace(dto.Password))
+            return Result.Failure<AdvisorDto>(new Error("Auth.PasswordRequired", "كلمة المرور مطلوبة عند إنشاء حساب مرشد أكاديمي.", 400));
+
+        var createResult = await _userManager.CreateAsync(user, dto.Password);
         if (!createResult.Succeeded)
             return HandleIdentityErrors<AdvisorDto>(createResult);
 
