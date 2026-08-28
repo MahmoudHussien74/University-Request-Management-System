@@ -1,34 +1,25 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.Extensions.DependencyInjection;
-using URMS.Application.Contracts.Identity;
 
 namespace URMS.Infrastructure.PermissionAuthorization;
 
+/// <summary>
+/// Reads permissions directly from JWT claims instead of querying the database.
+/// Permissions are already embedded in the token by JwtTokenGenerator (claim type: "Permission").
+/// This eliminates 3-5 DB round-trips per authorized request.
+/// </summary>
 public class PermissionAuthorizationHandler : AuthorizationHandler<PermissionRequirement>
 {
-    private readonly IServiceScopeFactory _serviceScopeFactory;
-
-    public PermissionAuthorizationHandler(IServiceScopeFactory serviceScopeFactory)
-    {
-        _serviceScopeFactory = serviceScopeFactory;
-    }
-
-    protected override async Task HandleRequirementAsync(
+    protected override Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
         PermissionRequirement requirement)
     {
-        var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(userId))
-            return;
+        var hasPermission = context.User.HasClaim("Permission", requirement.Permission);
 
-        using var scope = _serviceScopeFactory.CreateScope();
-        var rolePermissionService = scope.ServiceProvider.GetRequiredService<IRolePermissionService>();
-
-        var hasPermission = await rolePermissionService.HasPermissionAsync(userId, requirement.Permission);
         if (hasPermission)
         {
             context.Succeed(requirement);
         }
+
+        return Task.CompletedTask;
     }
 }

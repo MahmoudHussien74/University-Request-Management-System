@@ -155,7 +155,7 @@ public static class DependencyInjection
 
         // ─── 6. Dynamic Permission Policy Provider & Handler ───
         services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
-        services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+        services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
         // ─── 7. Background Services ───
         services.AddHostedService<URMS.Infrastructure.Services.RefreshTokenCleanupService>();

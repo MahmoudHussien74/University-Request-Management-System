@@ -141,30 +141,31 @@ public class AuthController : ControllerBase
     private void SetAuthCookies(string accessToken, string refreshToken, DateTime refreshTokenExpiresOn)
     {
         var isHttps = Request.IsHttps;
-        var cookieOptions = new CookieOptions
+        var sameSite = isHttps ? SameSiteMode.None : SameSiteMode.Lax;
+
+        // Access token: session cookie (no Expires — governed by JWT exp claim)
+        Response.Cookies.Append(AuthConstants.AccessTokenCookie, accessToken, new CookieOptions
         {
             HttpOnly = true,
-            SameSite = isHttps ? SameSiteMode.None : SameSiteMode.Lax,
+            SameSite = sameSite,
             Secure = isHttps,
             Path = "/"
-        };
+        });
 
-        Response.Cookies.Append(AuthConstants.AccessTokenCookie, accessToken, cookieOptions);
-        Response.Cookies.Append(AuthConstants.RefreshTokenCookie, refreshToken, cookieOptions.WithExpires(refreshTokenExpiresOn));
+        // Refresh token: persistent cookie with explicit expiration
+        Response.Cookies.Append(AuthConstants.RefreshTokenCookie, refreshToken, new CookieOptions
+        {
+            HttpOnly = true,
+            SameSite = sameSite,
+            Secure = isHttps,
+            Path = "/",
+            Expires = refreshTokenExpiresOn
+        });
     }
 
     private void ClearAuthCookies()
     {
         Response.Cookies.Delete(AuthConstants.AccessTokenCookie);
         Response.Cookies.Delete(AuthConstants.RefreshTokenCookie);
-    }
-}
-
-public static class CookieOptionsExtensions
-{
-    public static CookieOptions WithExpires(this CookieOptions options, DateTime expires)
-    {
-        options.Expires = expires;
-        return options;
     }
 }
