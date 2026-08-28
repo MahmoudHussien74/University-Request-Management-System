@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using URMS.Application.Common.Helpers;
 
 namespace URMS.Application.Services;
@@ -9,19 +10,22 @@ public class RequestWorkflowService : IRequestWorkflowService
     private readonly IOtpService _otpService;
     private readonly IRequestNotificationService _notificationService;
     private readonly EmailSettings _emailSettings;
+    private readonly ILogger<RequestWorkflowService> _logger;
 
     public RequestWorkflowService(
         IUnitOfWork unitOfWork,
         IUniversityRequestRepository requestRepo,
         IOtpService otpService,
         IRequestNotificationService notificationService,
-        IOptions<EmailSettings> emailOptions)
+        IOptions<EmailSettings> emailOptions,
+        ILogger<RequestWorkflowService> logger)
     {
         _unitOfWork = unitOfWork;
         _requestRepo = requestRepo;
         _otpService = otpService;
         _notificationService = notificationService;
         _emailSettings = emailOptions.Value;
+        _logger = logger;
     }
 
     public async Task<Result<UniversityRequestResponseDto>> ReviewByAdvisorAsync(int requestId, string advisorId, AdvisorReviewRequestDto dto)
@@ -36,6 +40,9 @@ public class RequestWorkflowService : IRequestWorkflowService
             return Result.Failure<UniversityRequestResponseDto>(result.Error);
 
         await _unitOfWork.CompleteAsync();
+
+        _logger.LogInformation("Request {RequestId} reviewed by advisor {AdvisorId}: Approved={IsApproved}",
+            requestId, advisorId, dto.IsApproved);
 
         var advisor = await _requestRepo.GetUserByIdAsync(advisorId);
         return Result.Success(request.MapToDto(request.Student, advisor, null));
@@ -100,6 +107,10 @@ public class RequestWorkflowService : IRequestWorkflowService
             return Result.Failure<UniversityRequestResponseDto>(result.Error);
 
         await _unitOfWork.CompleteAsync();
+
+        _logger.LogInformation("External administration responded to request {RequestId}: Approved={IsApproved}",
+            request.Id, dto.IsApproved);
+
         return Result.Success(request.MapToDto(request.Student, request.Advisor, request.Administration));
     }
 

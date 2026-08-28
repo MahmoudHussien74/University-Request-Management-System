@@ -227,6 +227,27 @@ public class UniversityRequest : AuditableEntity
         return Result.Success();
     }
 
+    /// <summary>
+    /// Student withdraws their own pending request.
+    /// </summary>
+    public Result Withdraw(string studentId)
+    {
+        if (StudentId != studentId)
+            return Result.Failure(RequestErrors.RequestNotFound);
+
+        if (Status != RequestStatus.Pending)
+            return Result.Failure(RequestErrors.InvalidStatusForWithdraw);
+
+        var oldStatus = Status;
+        Status = RequestStatus.Rejected;
+        RejectionReason = "تم سحب الطلب بواسطة الطالب";
+
+        AddHistoryLog(studentId, oldStatus, Status,
+            RequestLogMessages.WithdrawnByStudent, RejectionReason);
+
+        return Result.Success();
+    }
+
     // ─── Private Helpers ───
 
     private void AddHistoryLog(string actionById, RequestStatus oldStatus, RequestStatus newStatus,

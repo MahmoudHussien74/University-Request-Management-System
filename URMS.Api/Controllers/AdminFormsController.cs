@@ -46,7 +46,7 @@ public class AdminFormsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateForm([FromBody] CreateFormDefinitionDto dto)
     {
-        var adminId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "SuperAdmin";
+        var adminId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
         var result = await _formService.CreateFormAsync(dto, adminId);
         return result.ToResponse(HttpContext, LocalizationKeys.SuccessDefault, 201);
     }
@@ -57,7 +57,7 @@ public class AdminFormsController : ControllerBase
     [HttpPut("{id:int}")]
     public async Task<IActionResult> UpdateForm(int id, [FromBody] UpdateFormDefinitionDto dto)
     {
-        var adminId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "SuperAdmin";
+        var adminId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
         var result = await _formService.UpdateFormAsync(id, dto, adminId);
         return result.ToResponse(HttpContext);
     }

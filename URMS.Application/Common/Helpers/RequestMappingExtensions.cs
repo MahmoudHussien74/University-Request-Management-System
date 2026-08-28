@@ -1,11 +1,3 @@
-using System.Globalization;
-using System.Text.Json;
-using Mapster;
-using URMS.Application.DTOs.Requests;
-using URMS.Domain.Constants;
-using URMS.Domain.Entities;
-using URMS.Domain.Enums;
-
 namespace URMS.Application.Common.Helpers;
 
 public static class RequestMappingExtensions
@@ -23,9 +15,9 @@ public static class RequestMappingExtensions
             {
                 additionalData = JsonSerializer.Deserialize<Dictionary<string, string>>(request.AdditionalDataJson);
             }
-            catch
+            catch (JsonException)
             {
-                // Fallback if parsing fails
+                // Invalid JSON in AdditionalDataJson — safe to ignore, field will be null
             }
         }
 

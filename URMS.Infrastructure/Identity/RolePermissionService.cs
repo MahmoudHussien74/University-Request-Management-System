@@ -2,8 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using URMS.Application.Contracts.Identity;
 using URMS.Application.DTOs.Auth;
-using URMS.Domain.Constants;
-using URMS.Domain.Entities;
+using URMS.Domain.Abstractions;
 
 namespace URMS.Infrastructure.Identity;
 
@@ -55,11 +54,11 @@ public class RolePermissionService : IRolePermissionService
         return new RolePermissionsDto(role.Name!, assignedPermissions, allPermissions);
     }
 
-    public async Task UpdateRolePermissionsAsync(UpdateRolePermissionsRequest request)
+    public async Task<Result> UpdateRolePermissionsAsync(UpdateRolePermissionsRequest request)
     {
         var role = await _roleManager.FindByNameAsync(request.RoleName);
         if (role is null)
-            throw new Exception($"Role '{request.RoleName}' not found.");
+            return Result.Failure(new Error("Role.NotFound", $"Role '{request.RoleName}' not found.", 404));
 
         var existingClaims = await _roleManager.GetClaimsAsync(role);
         var permissionClaims = existingClaims.Where(c => c.Type == "Permission").ToList();
@@ -75,6 +74,8 @@ public class RolePermissionService : IRolePermissionService
         {
             await _roleManager.AddClaimAsync(role, new Claim("Permission", permission));
         }
+
+        return Result.Success();
     }
 
     public async Task<List<string>> GetUserPermissionsAsync(string userId)

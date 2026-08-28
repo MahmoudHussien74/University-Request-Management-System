@@ -81,24 +81,9 @@ public class RequestCreationService : IRequestCreationService
         if (request is null)
             return Result.Failure<UniversityRequestResponseDto>(RequestErrors.RequestNotFound);
 
-        if (request.StudentId != studentId)
-            return Result.Failure<UniversityRequestResponseDto>(RequestErrors.RequestNotFound);
-
-        if (request.Status != RequestStatus.Pending)
-            return Result.Failure<UniversityRequestResponseDto>(RequestErrors.InvalidStatusForWithdraw);
-
-        var oldStatus = request.Status;
-        request.Status = RequestStatus.Rejected;
-        request.RejectionReason = "تم سحب الطلب بواسطة الطالب";
-
-        request.HistoryLogs.Add(new RequestHistoryLog
-        {
-            ActionById = studentId,
-            OldStatus = oldStatus,
-            NewStatus = request.Status,
-            ActionMessage = RequestLogMessages.WithdrawnByStudent,
-            Notes = request.RejectionReason
-        });
+        var result = request.Withdraw(studentId);
+        if (result.IsFailure)
+            return Result.Failure<UniversityRequestResponseDto>(result.Error);
 
         await _unitOfWork.CompleteAsync();
         return Result.Success(request.MapToDto(request.Student, request.Advisor, request.Administration));
